@@ -1,0 +1,27 @@
+import Link from "next/link";
+
+/* Placeholder entry. The marketing site and homepage are specced separately
+ * (buildsync-website.md) and will replace this route. */
+export default function Home() {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-6 px-6 py-16">
+      <div className="flex items-center gap-3">
+        <span className="grid size-9 place-items-center rounded-lg bg-accent text-base font-semibold text-on-accent">B</span>
+        <span className="text-xl font-semibold">BuildSync AI</span>
+      </div>
+      <p className="text-[0.9375rem] leading-relaxed text-t2">
+        An AI workspace for engineering plans. Upload or draw a plan, check it against your local building code, then turn it into a schedule, budget, material list and
+        crew plan, and stress-test it against real disasters.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <Link href="/demo" className="btn btn-primary h-9 px-4 text-[0.8125rem]">
+          Try the demo, no signup needed
+        </Link>
+        <Link href="/app" className="btn h-9 px-4 text-[0.8125rem]">
+          Open workspace
+        </Link>
+      </div>
+      <p className="text-[0.75rem] text-t3">This page is a placeholder. The marketing site is specced separately.</p>
+    </main>
+  );
+}

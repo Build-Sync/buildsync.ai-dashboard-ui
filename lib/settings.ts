@@ -1,0 +1,184 @@
+import { DEFAULT_ROUTING } from "./agents";
+import type { AgentId, TaskKind, VisualStyle } from "./types";
+import type { DateFormat, MeasureSystem } from "./utils";
+
+/* User settings (spec §11). Non-secret only: API keys never live here. */
+
+export type NotifEvent =
+  | "issue-assigned"
+  | "pe-review"
+  | "mention"
+  | "analysis-done"
+  | "agent-connection"
+  | "weekly-digest";
+
+export const NOTIF_EVENTS: { id: NotifEvent; label: string; inApp: boolean; email: boolean }[] = [
+  { id: "issue-assigned", label: "Issue assigned to me", inApp: true, email: true },
+  { id: "pe-review", label: "PE review requested / completed", inApp: true, email: true },
+  { id: "mention", label: "Comment mention", inApp: true, email: true },
+  { id: "analysis-done", label: "Simulation / analysis finished", inApp: true, email: true },
+  { id: "agent-connection", label: "Agent connected / disconnected", inApp: true, email: true },
+  { id: "weekly-digest", label: "Weekly project digest", inApp: false, email: true },
+];
+
+export type OsnapMode = "endpoint" | "midpoint" | "center" | "intersection" | "perpendicular" | "nearest";
+
+export interface Settings {
+  general: {
+    language: "en" | "fr" | "es" | "ja";
+    autosave: boolean;
+    autosaveMinutes: 1 | 2 | 5 | 10;
+    advisoryBanner: boolean;
+    defaultJurisdiction: string | null;
+    startScreen: "start" | "last";
+    checkUpdates: boolean;
+  };
+  units: {
+    system: MeasureSystem;
+    precision: 0 | 1 | 2 | 3;
+    angle: "degrees" | "radians" | "grads";
+    areaVolume: "imperial" | "metric";
+    currency: "USD" | "XCD" | "EUR" | "ANG";
+    dateFormat: DateFormat;
+  };
+  gridSnap: {
+    gridSpacing: string;
+    majorEvery: number;
+    snapSpacing: string;
+    osnap: Record<OsnapMode, boolean>;
+    ortho: boolean;
+    polar: boolean;
+    polarAngle: 15 | 30 | 45 | 90;
+    dynInput: boolean;
+  };
+  display: {
+    theme: "dark" | "light" | "hc";
+    accent: string;
+    uiScale: 90 | 100 | 110 | 125;
+    crosshairSize: number;
+    showViewCube: boolean;
+    showNavBar: boolean;
+    showUcs: boolean;
+    tooltips: "off" | "basic" | "extended";
+    /** null = theme default */
+    background: string | null;
+  };
+  rendering: {
+    visualStyle: VisualStyle;
+    shadows: boolean;
+    sunPosition: "project" | "custom";
+    sunHour: number;
+    antialiasing: "off" | "2x" | "4x";
+    quality: "draft" | "standard" | "high";
+    edges: boolean;
+  };
+  shortcuts: {
+    /** command → alias typed on the command line */
+    aliases: Record<string, string>;
+    /** command → keyboard shortcut */
+    keys: Record<string, string>;
+  };
+  ai: {
+    defaultAgent: AgentId;
+    shareContext: boolean;
+    sendFiles: boolean;
+    detail: "concise" | "standard" | "full";
+    citeCode: boolean;
+  };
+  routing: Record<TaskKind, AgentId | "active">;
+  mcp: { enabled: boolean };
+  notifications: Record<NotifEvent, { inApp: boolean; email: boolean }>;
+}
+
+export const ACCENTS = ["#4C8DFF", "#3ECF8E", "#F0A940", "#EF5B5B", "#8B6CF0", "#2CC4D6", "#E86AB5"] as const;
+
+export const DEFAULT_SETTINGS: Settings = {
+  general: {
+    language: "en",
+    autosave: true,
+    autosaveMinutes: 2,
+    advisoryBanner: true,
+    defaultJurisdiction: null,
+    startScreen: "last",
+    checkUpdates: true,
+  },
+  units: {
+    system: "imperial",
+    precision: 2,
+    angle: "degrees",
+    areaVolume: "imperial",
+    currency: "USD",
+    dateFormat: "MM/DD/YYYY",
+  },
+  gridSnap: {
+    gridSpacing: "1'-0\"",
+    majorEvery: 10,
+    snapSpacing: '6"',
+    osnap: { endpoint: true, midpoint: true, center: false, intersection: true, perpendicular: false, nearest: false },
+    ortho: true,
+    polar: false,
+    polarAngle: 45,
+    dynInput: true,
+  },
+  display: {
+    theme: "dark",
+    accent: "#4C8DFF",
+    uiScale: 100,
+    crosshairSize: 100,
+    showViewCube: true,
+    showNavBar: true,
+    showUcs: true,
+    tooltips: "extended",
+    background: null,
+  },
+  rendering: {
+    visualStyle: "realistic",
+    shadows: true,
+    sunPosition: "project",
+    sunHour: 15,
+    antialiasing: "4x",
+    quality: "standard",
+    edges: true,
+  },
+  shortcuts: { aliases: {}, keys: {} },
+  ai: {
+    defaultAgent: "claude",
+    shareContext: true,
+    sendFiles: false,
+    detail: "standard",
+    citeCode: true,
+  },
+  routing: { ...DEFAULT_ROUTING },
+  mcp: { enabled: false },
+  notifications: Object.fromEntries(NOTIF_EVENTS.map((e) => [e.id, { inApp: e.inApp, email: e.email }])) as Settings["notifications"],
+};
+
+export function cloneSettings(s: Settings): Settings {
+  return JSON.parse(JSON.stringify(s)) as Settings;
+}
+
+/** Deep-merge stored settings over the defaults so new keys never break old payloads. */
+export function mergeSettings(stored: unknown): Settings {
+  const base = cloneSettings(DEFAULT_SETTINGS);
+  const walk = (target: Record<string, unknown>, src: Record<string, unknown>) => {
+    for (const key of Object.keys(src)) {
+      const sv = src[key];
+      const tv = target[key];
+      if (sv && typeof sv === "object" && !Array.isArray(sv) && tv && typeof tv === "object" && !Array.isArray(tv)) {
+        walk(tv as Record<string, unknown>, sv as Record<string, unknown>);
+      } else if (sv !== undefined && key in target) {
+        target[key] = sv;
+      } else if (key === "aliases" || key === "keys") {
+        target[key] = sv;
+      }
+    }
+  };
+  if (stored && typeof stored === "object") walk(base as unknown as Record<string, unknown>, stored as Record<string, unknown>);
+  return base;
+}
+
+export function settingsEqual(a: Settings, b: Settings): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+export const SETTINGS_STORAGE_KEY = "bs.settings";
