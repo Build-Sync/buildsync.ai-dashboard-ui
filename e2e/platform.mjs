@@ -542,7 +542,7 @@ await check("downloads: the shortcuts export is JSON and the file name is the sa
   for (const os of ["mac", "windows"]) {
     const s = await fresh(os);
     await s.page.goto(BASE + "/settings/shortcuts", { waitUntil: "networkidle" });
-    const button = s.page.getByRole("button", { name: "Export" });
+    const button = s.page.getByRole("button", { name: "Export", exact: true });
     await button.waitFor();
     const [json] = await Promise.all([s.page.waitForEvent("download"), button.click()]);
     eq(json.suggestedFilename(), "buildsync-shortcuts.json", os);
