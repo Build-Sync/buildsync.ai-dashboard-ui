@@ -1,3 +1,16 @@
+/**
+ * components/settings/panes/AiSettings.tsx
+ *
+ * WHAT   Settings → AI Settings: default agent (only connected agents are offered), the locked "always preview
+ *        changes" switch, share model context, send project files, response detail, cite code sections, and
+ *        Clear AI history with a two-step confirmation.
+ * FOR    The `settings.ai` values and the command-line history held in the app store.
+ * DEBUG  - The default-agent list is empty: no agent is connected; connect one on the Integrations page.
+ *        - Clear history is disabled: the command-line history is already empty.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";
@@ -7,6 +20,7 @@ import { useApp, useAppApi } from "@/lib/store/app-provider";
 import type { AgentId } from "@/lib/types";
 import { Row, useDraft } from "../rows";
 
+/** The Settings → AI Settings pane. */
 export function AiSettingsPane() {
   const { s, set } = useDraft();
   const app = useAppApi();

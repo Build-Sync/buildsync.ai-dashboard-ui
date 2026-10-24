@@ -1,3 +1,22 @@
+/**
+ * lib/store/workspace-provider.tsx
+ *
+ * WHAT   React provider and hooks for the workspace store, and UrlMirror, which keeps tab, panel, explorer,
+ *        view, section and doc in sync with the address bar: URL to store on load and on back / forward, store
+ *        to URL with history.replaceState.
+ * FOR    Workspace.tsx wraps the CAD screen in <WorkspaceProvider>. Components use useWs(selector),
+ *        useWsShallow and useWsApi().
+ * DEBUG  - A click is undone a moment later: Next hands every replaceState back through useSearchParams,
+ *          possibly late; UrlMirror ignores queries it wrote itself in the last 2 s (ECHO_WINDOW_MS) so a stale
+ *          echo cannot undo a newer change.
+ *        - The workspace resets while Settings is open: UrlMirror is idle unless pathname === basePath, because
+ *          the intercepted settings route changes the browser URL.
+ *        - A URL with no workspace parameters adopts the store's state instead (restores a document tab where
+ *          it was).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
@@ -10,6 +29,7 @@ import { getWorkspaceStore, type WsInit, type WsState, type WsStore } from "./wo
 
 const WsContext = createContext<WsStore | null>(null);
 
+/** Provides the workspace store for a project and mirrors its state into the URL. */
 export function WorkspaceProvider({ init, basePath, children }: { init: WsInit; basePath: string; children: ReactNode }) {
   const app = useAppApi();
   const [store] = useState(() =>
@@ -27,20 +47,24 @@ export function WorkspaceProvider({ init, basePath, children }: { init: WsInit; 
   );
 }
 
+/** The workspace store object itself (for getState() in event handlers). */
 export function useWsApi(): WsStore {
   const s = useContext(WsContext);
   if (!s) throw new Error("useWsApi must be used inside <WorkspaceProvider>");
   return s;
 }
 
+/** Subscribe to a slice of the workspace state. */
 export function useWs<T>(selector: (s: WsState) => T): T {
   return useStore(useWsApi(), selector);
 }
 
+/** Like useWs but compares the slice shallowly. */
 export function useWsShallow<T>(selector: (s: WsState) => T): T {
   return useStore(useWsApi(), useShallow(selector));
 }
 
+/** The URL-mirrored part of a workspace state. */
 export function pickQuery(s: WsState): WorkspaceQuery {
   return { tab: s.tab, panel: s.panel, explorer: s.explorer, view: s.view, section: s.section, doc: s.doc, project: s.demoProject };
 }

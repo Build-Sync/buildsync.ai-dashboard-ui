@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Palettes/Properties.tsx
+ *
+ * WHAT   The Properties palette: a header for the selected element and collapsible General, Geometry,
+ *        Appearance, Material, Structural and Cost sections. Appearance holds the six colour overrides; with
+ *        several elements selected it shows a count instead.
+ * FOR    Inspecting one element. Details come from elementDetails in lib/scene; colour and material overrides
+ *        are stored in the workspace store and drawn by the viewport.
+ * DEBUG  - Nothing shows: the palette needs exactly one selected element.
+ *        - A colour change has no effect: colours are keyed by AppearanceKey (walls, roof, structural,
+ *          topography, electrical, plumbing).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Section, KV, EmptyState } from "@/components/ui/controls";

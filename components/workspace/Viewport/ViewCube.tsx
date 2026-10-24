@@ -1,3 +1,20 @@
+/**
+ * components/workspace/Viewport/ViewCube.tsx
+ *
+ * WHAT   The AutoCAD-style ViewCube in the corner of the canvas. In 3D it is a real projected cube: clicking a
+ *        face jumps to that named view (TOP switches to the 2D plan), the compass ring rotates the model 90°,
+ *        and the house button resets to SW Isometric. In 2D it shows a compass ring (click to rotate the plan
+ *        90°) and the centre square switches back to 3D.
+ * FOR    Quick orientation and view changes. It reads the camera (3D) or the plan rotation (2D) from the
+ *        workspace store, projects the cube with the same basis as the model (lib/scene/camera.ts) and calls
+ *        named-view actions in the store. Hidden by Settings → Display → Show ViewCube.
+ * DEBUG  - The cube shows the wrong face: FACES lists each face's normal and corner points; basis() in
+ *          lib/scene/camera.ts supplies the right / up / forward vectors.
+ *        - The compass is wrong in 2D: the 2D bearing is 180 + the plan rotation.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";
@@ -24,6 +41,7 @@ const FACES: { name: string; label: string; n: V3; pts: V3[]; view: string }[] =
   { name: "left", label: "LEFT", n: [-1, 0, 0], pts: [[-1, 1, -1], [-1, -1, -1], [-1, -1, 1], [-1, 1, 1]], view: "Left" },
 ];
 
+/** The interactive orientation cube and compass ring. */
 export function ViewCube() {
   const ws = useWsApi();
   const view = useWs((s) => s.view);

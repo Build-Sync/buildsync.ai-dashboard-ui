@@ -1,3 +1,17 @@
+/**
+ * components/settings/panes/Rendering.tsx
+ *
+ * WHAT   Settings → Rendering: default visual style, shadows, sun position (the project's location and date, or
+ *        a custom hour), anti-aliasing, quality and edge display, with the computed sun altitude and azimuth.
+ * FOR    The `settings.rendering` values, read by the viewport
+ *        (components/workspace/Viewport/ModelViewport.tsx) and the visual-style menu.
+ * DEBUG  - Sun numbers look wrong: they come from sunAltAz in lib/scene/sun.ts; "project" uses PROJECT_SUN_HOUR
+ *          (15:00).
+ *        - A style change does not show: a per-project style override (workspace store) wins over this default.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Select, Slider, Switch } from "@/components/ui/controls";
@@ -5,6 +19,7 @@ import type { VisualStyle } from "@/lib/types";
 import { sunAltAz } from "@/lib/scene/sun";
 import { Row, useDraft } from "../rows";
 
+/** The Settings → Rendering pane. */
 export function RenderingPane() {
   const { s, set } = useDraft();
   const r = s.rendering;

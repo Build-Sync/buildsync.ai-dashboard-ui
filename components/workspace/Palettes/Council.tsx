@@ -1,3 +1,15 @@
+/**
+ * components/workspace/Palettes/Council.tsx
+ *
+ * WHAT   The Agent Council palette: a decision is put to several connected agents; each takes a role and votes,
+ *        and the palette shows the votes and the outcome.
+ * FOR    Second opinions on a design decision. It needs two or more connected agents; otherwise it explains how
+ *        to connect more.
+ * DEBUG  - Run is disabled: the question is empty or a council is already running.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import Link from "next/link";

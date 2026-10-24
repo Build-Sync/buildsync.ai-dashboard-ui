@@ -1,3 +1,13 @@
+// tsconfig.json
+//
+// WHAT   TypeScript settings for the whole project: strict mode, the "@/..." import alias for the repository root,
+//        and the Next.js plugin. `noEmit` because Next.js (Turbopack) compiles the code; tsc only type-checks.
+// FOR    `npm run typecheck`, the editor, and Next.js, which may add entries here on `next dev` (it keeps comments).
+// DEBUG  - "Cannot find module '@/...'": check the `paths` alias below and that the file exists.
+//        - Stale errors from .next/types: delete the .next folder and run `npm run dev` or `npm run build` once.
+//
+// Author: Giordano Bertin-Maurice
+// Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
 {
   "compilerOptions": {
     "target": "ES2017",

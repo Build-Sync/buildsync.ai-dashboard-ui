@@ -1,3 +1,20 @@
+/**
+ * components/workspace/AppBar.tsx
+ *
+ * WHAT   The 34 px application bar at the top: the "B" application-menu button, quick access (New, Open, Save,
+ *        Undo, Redo), the project title with an asterisk when unsaved, the search box, the jurisdiction chip,
+ *        the AI agents chip, the settings gear and the seat chip.
+ * FOR    Global actions that do not belong to a ribbon tab. Every button goes through useRunner().run(command)
+ *        (lib/commands.ts); the chips and gear run "/settings/…" routes, which open the Settings modal over the
+ *        workspace.
+ * DEBUG  - Undo / Redo greyed out: they are disabled while the workspace undo / redo stacks are empty
+ *          (lib/store/workspace-store.ts).
+ *        - Agents chip count wrong: it counts agents with `connected` set in the app store.
+ *        - Title shows * : the workspace `dirty` flag is set.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useRef } from "react";
@@ -22,6 +39,7 @@ const QUICK: { icon: IconKey; label: string; desc: string; cmd: string }[] = [
 
 const SEAT_LABEL = { student: "Student", engineer: "Engineer", government: "Government" } as const;
 
+/** The top application bar (app menu, quick access, title, search, chips). */
 export function AppBar() {
   const ws = useWsApi();
   const { run } = useRunner();

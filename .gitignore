@@ -1,3 +1,16 @@
+# .gitignore
+#
+# WHAT   The files Git must not track: dependencies (node_modules), build output (.next, out, build), local env
+#        files, editor and OS clutter (.DS_Store on macOS, Thumbs.db and Desktop.ini on Windows), TypeScript
+#        build info and the browser-test screenshots.
+# FOR    Keeping the repository clean on macOS, Windows and Linux. Environment files are ignored by default;
+#        remove a line only to commit one on purpose, and never commit secrets.
+# DEBUG  - A file you expect is missing from `git status`: `git check-ignore -v <path>` prints the rule that
+#          ignores it.
+#
+# Author: Giordano Bertin-Maurice
+# Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies

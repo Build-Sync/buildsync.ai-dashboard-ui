@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Palettes/StressTest.tsx
+ *
+ * WHAT   The Stress Test palette: set up an element, load case, conditions and mesh, then Run or Clear. Results
+ *        show max stress against the allowable, strain, deflection against its limit, safety factor, max load
+ *        and a pass / fail verdict, with "Apply in model" to act on the result.
+ * FOR    Structural checks of load-bearing elements from the open scene (the Element list is built from them).
+ *        Calculations come from lib/services/analysis.ts (mock); results are advisory until a PE signs off.
+ * DEBUG  - An element is missing from the list: only load-bearing elements, plus one truss, are offered;
+ *          footings, doors and windows are excluded.
+ *        - A result is shown as failing when the safety factor is below 1 or the deflection is above its limit.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useMemo, useState } from "react";

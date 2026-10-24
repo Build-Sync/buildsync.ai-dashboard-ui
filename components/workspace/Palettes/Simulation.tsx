@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Palettes/Simulation.tsx
+ *
+ * WHAT   The Disaster Simulation palette: a scenario builder (type, intensity, wind / fire / sun direction,
+ *        duration), Run, Show in viewport, and the results with optional calculations.
+ * FOR    What-if scenarios (hurricane, seismic, flood …) defined in SIM_TYPES in lib/services/analysis.ts.
+ *        Results and the vector overlay are held in the workspace store and drawn by the viewport; output is
+ *        advisory only.
+ * DEBUG  - The direction dial is dim: the chosen scenario does not use a direction (only hurricane, fire and
+ *          lighting do).
+ *        - Run does nothing: a run is already in progress (`simRunning`).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";

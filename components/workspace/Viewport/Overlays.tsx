@@ -1,3 +1,20 @@
+/**
+ * components/workspace/Viewport/Overlays.tsx
+ *
+ * WHAT   The SVG layers drawn on top of the model: shared defs (hatch, arrow marker, stress gradient),
+ *        selection and hover outlines with grips, stress heat spots and legend, simulation vectors, the solar
+ *        path, section callouts, 2D plan annotations (door swings, dimensions, grid bubbles, room labels), the
+ *        north arrow and the UCS icon.
+ * FOR    ModelViewport and SheetView render these inside their SVG. Most receive the scene and the projector, so
+ *        they follow the camera; none of them handle input (pointer-events are off).
+ * DEBUG  - An overlay is missing: each is switched on by its workspace state (stressOverlay, simVectors, solar,
+ *          section …) in ModelViewport.
+ *        - Overlay colours look wrong on a sheet: they read --vp-ink / --vp-ink-dim set by the sheet or the
+ *          theme.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { memo } from "react";
@@ -102,6 +119,7 @@ export const StressSpots = memo(function StressSpots({ scene, proj, result, sect
   );
 });
 
+/** Colour scale for the stress overlay, in ksi. */
 export function StressLegend() {
   return (
     <div className="pointer-events-none absolute bottom-16 left-3 z-10 flex items-stretch gap-1.5 rounded-md border border-line bg-chrome/90 px-2 py-1.5 backdrop-blur">

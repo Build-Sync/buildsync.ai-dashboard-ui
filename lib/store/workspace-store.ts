@@ -1,3 +1,26 @@
+/**
+ * lib/store/workspace-store.ts
+ *
+ * WHAT   Per-project workspace state: everything the CAD screen needs (ribbon tab, palette, explorer, 2D / 3D,
+ *        camera and plan, selection, hidden / locked / isolated elements, colours and renames, toggles, docks,
+ *        modal, timeline, stress and simulation results, comments, issues, proposals, undo / redo) and the
+ *        actions that change it. One store per (mode, project), cached in the browser so switching document
+ *        tabs keeps edits.
+ * FOR    useWs / useWsApi in components (lib/store/workspace-provider.tsx) and CommandCtx in lib/commands.ts.
+ *        Model edits go through edit(label, fn), which records an undo entry (snapshot of the model part, up to
+ *        50) and marks the project dirty.
+ * DEBUG  - Undo does nothing: only changes made through edit() are undoable; plain set() calls (selection,
+ *          camera) are not.
+ *        - Edits made quickly are merged into one undo step: edit(..., { coalesce: true }) within 1.5 s of the
+ *          same label.
+ *        - State lost on tab switch: the cache key is `mode:projectId`; a different mode or id is a different
+ *          store.
+ *        - The URL and the store disagree: only tab, panel, explorer, view, section and doc are mirrored
+ *          (UrlMirror in workspace-provider.tsx).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { createStore, type StoreApi } from "zustand/vanilla";
 import {
   HOME_CAMERA,
@@ -43,10 +66,14 @@ import type { WorkspaceQuery } from "../workspace-query";
 /* Per-project workspace state: everything the CAD screen needs. One store per
  * (mode, project) pair, cached on the client so switching document tabs keeps edits. */
 
+/** The navigation tool chosen on the navigation bar. */
 export type NavTool = "select" | "pan" | "zoom" | "orbit" | "walk";
+/** Status-bar drafting toggles. */
 export type ToggleKey = "model" | "grid" | "snap" | "ortho" | "polar" | "osnap" | "osnap3d" | "dyn" | "lwt";
+/** Dockable areas that can be shown or hidden. */
 export type DockKey = "explorer" | "palettes" | "timeline" | "cmdline";
 
+/** Ids of the workspace dialogs. */
 export type ModalId =
   | "project-info"
   | "import"
@@ -65,17 +92,20 @@ export type ModalId =
   | "qto"
   | "approvals"
   | "geolocate";
+/** The open dialog and its data. */
 export interface ModalState {
   id: ModalId;
   data?: Record<string, string | number | boolean>;
 }
 
+/** A paper-space layout sheet. */
 export interface Sheet {
   id: string;
   name: string;
   kind: "plan" | "section" | "structural" | "elevation";
 }
 
+/** Callbacks into the global store (toast, log, dirty flag) passed in when a store is created. */
 export interface WorkspaceHooks {
   toast: (text: string, tone?: Toast["tone"]) => void;
   log: (kind: HistoryKind, text: string) => void;
@@ -97,6 +127,7 @@ interface UndoEntry {
   snap: ModelSnapshot;
 }
 
+/** State of the timeline dock. */
 export interface TimelineState {
   open: boolean;
   window: TimelineWindow | null;
@@ -104,6 +135,7 @@ export interface TimelineState {
   zoom: "day" | "week" | "month";
 }
 
+/** State and actions of a workspace store. */
 export interface WsState {
   mode: "app" | "demo";
   project: Project;
@@ -281,6 +313,7 @@ export interface WsState {
   peAdvance: (ids: string[], to: "reviewed" | "signed", note: string, actor: string) => void;
 }
 
+/** A workspace store. */
 export type WsStore = StoreApi<WsState>;
 
 const FLOOR_SHEETS: Sheet[] = [
@@ -304,12 +337,14 @@ const DEFAULT_TOGGLES: Record<ToggleKey, boolean> = {
 const weighted = (h: Pick<HealthSnapshot, "compliance" | "structural" | "cost" | "schedule">) =>
   Math.round(0.3 * h.compliance + 0.3 * h.structural + 0.2 * h.cost + 0.2 * h.schedule);
 
+/** What a workspace store starts from: mode, project and URL query. */
 export interface WsInit {
   mode: "app" | "demo";
   project: Project;
   query: WorkspaceQuery;
 }
 
+/** Create a workspace store for a project. */
 export function createWorkspaceStore(init: WsInit, hooks: WorkspaceHooks): WsStore {
   const scene = getScene(init.project.sceneKind);
   const defaultSim = SIM_TYPES[0];
@@ -776,6 +811,7 @@ export function createWorkspaceStore(init: WsInit, hooks: WorkspaceHooks): WsSto
 /* ── client cache so document tabs keep their edits ─────────────────────── */
 const cache = new Map<string, WsStore>();
 
+/** The cached workspace store for a mode and project (created on first use in the browser). */
 export function getWorkspaceStore(init: WsInit, hooks: WorkspaceHooks): WsStore {
   if (typeof window === "undefined") return createWorkspaceStore(init, hooks);
   const key = `${init.mode}:${init.project.id}`;

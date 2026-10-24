@@ -1,3 +1,15 @@
+/**
+ * components/workspace/CommandLine/ProposalCard.tsx
+ *
+ * WHAT   A card showing one edit proposed by an AI agent: who proposes it, the title, the cost change, a before
+ *        / after list of the changes, and Reject / Accept buttons.
+ * FOR    Edit safety: agents only propose; nothing changes in the model until the user accepts, and the
+ *        affected elements glow amber in the viewport while the proposal is pending. Accept and Reject call
+ *        acceptProposal / rejectProposal in the workspace store.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

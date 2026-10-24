@@ -1,3 +1,20 @@
+/**
+ * lib/mock-data.ts
+ *
+ * WHAT   All sample content for the UI build: two sample projects (Residence_2BR_Miami and
+ *        Clinic_Phase1_Antigua) with their checks, issues, clashes, comments, schedule, cost and health; a
+ *        blank starter project; the recent-projects list, templates, jurisdictions and team members.
+ * FOR    The data layer that stands in for a back end (lib/services/projects.ts hands these out). Code section
+ *        numbers, costs and names are placeholders, not engineering advice.
+ * DEBUG  - A project shows wrong numbers: edit RESIDENCE or CLINIC here; the status bar score is
+ *          project.health.score.
+ *        - A layer is hidden at start: LAYER_DEFS sets the initial visibility (electrical, plumbing, HVAC and
+ *          fire start off).
+ *        - New projects: blankProject(id, n) builds "Untitled_n".
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type {
   Clash,
   CodeCheck,
@@ -18,7 +35,9 @@ import type {
 /* All data in this file is illustrative mock content for the UI build.
  * Code section numbers, costs and names are placeholders, not engineering advice. */
 
+/** Id of the sample residence (also the /demo project). */
 export const DEMO_PROJECT_ID = "residence-2br-miami";
+/** Id of the sample clinic. */
 export const CLINIC_PROJECT_ID = "clinic-phase1-antigua";
 
 /* ── layers ───────────────────────────────────────────────────────────── */
@@ -38,6 +57,7 @@ const LAYER_DEFS: { id: LayerId; name: string; color: string; visible: boolean }
   { id: "callouts", name: "Callouts / Documentation", color: "#e7eaef", visible: true },
 ];
 
+/** A fresh copy of the 13 model layers (none locked). */
 export function makeLayers(): Layer[] {
   return LAYER_DEFS.map((l) => ({ ...l, locked: false }));
 }
@@ -284,6 +304,7 @@ const residenceComments: Comment[] = [
   },
 ];
 
+/** The sample two-bedroom house in Miami. */
 export const RESIDENCE: Project = {
   id: DEMO_PROJECT_ID,
   name: "Residence_2BR_Miami",
@@ -326,6 +347,7 @@ const clinicChecks: CodeCheck[] = [
   { id: "CK-08", group: "Fire", rule: "Fire extinguisher spacing", section: "ABBC §9.1", status: "pass", elements: [] },
 ];
 
+/** The sample clinic in Antigua. */
 export const CLINIC: Project = {
   id: CLINIC_PROJECT_ID,
   name: "Clinic_Phase1_Antigua",
@@ -474,6 +496,7 @@ export function blankProject(id: string, n: number): Project {
   };
 }
 
+/** Projects shown as recent on the Start page and in the application menu. */
 export const RECENT_PROJECTS: RecentProject[] = [
   { id: RESIDENCE.id, name: RESIDENCE.name, jurisdiction: RESIDENCE.jurisdiction.name, openedAt: "Today" },
   { id: CLINIC.id, name: CLINIC.name, jurisdiction: CLINIC.jurisdiction.name, openedAt: "Yesterday" },
@@ -482,6 +505,7 @@ export const RECENT_PROJECTS: RecentProject[] = [
   { id: "warehouse-kingston", name: "Warehouse_Kingston", jurisdiction: "Kingston, Jamaica", openedAt: "Sep 27" },
 ];
 
+/** Project templates shown on the Start page. */
 export const TEMPLATES = [
   { id: "tpl-res", name: "Single-family residence", desc: "2 levels · gable roof · CMU" },
   { id: "tpl-clinic", name: "Light commercial / clinic", desc: "1 level · flat roof · accessible entry" },
@@ -489,6 +513,7 @@ export const TEMPLATES = [
   { id: "tpl-blank", name: "Blank project", desc: "Empty model with Miami-Dade code set" },
 ];
 
+/** Jurisdictions and code sets that can be chosen. */
 export const JURISDICTIONS = [
   { name: "Miami-Dade, FL", codeSet: "FBC 8th Ed. · HVHZ" },
   { name: "Broward, FL", codeSet: "FBC 8th Ed. · HVHZ" },
@@ -499,6 +524,7 @@ export const JURISDICTIONS = [
   { name: "San Juan, PR", codeSet: "PR Building Code 2018" },
 ];
 
+/** The team a new session starts with. */
 export const INITIAL_MEMBERS: Member[] = [
   { id: "m1", name: "Demo User", email: "demo@buildsync.example", role: "owner" },
   { id: "m2", name: "Maya Chen", email: "maya.chen@studiomarais.example", role: "engineer" },

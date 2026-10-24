@@ -1,3 +1,17 @@
+/**
+ * components/settings/panes/Permissions.tsx
+ *
+ * WHAT   Settings → Permissions: a read-only roles × capabilities matrix, and the members list with invite
+ *        (InviteDialog), role change and two-step remove.
+ * FOR    Role-based access in the mock team data (`members` in the app store). The Owner row has no controls,
+ *        by design.
+ * DEBUG  - The matrix is static: edit MATRIX and CAPS at the top of the file.
+ *        - An invited PE Reviewer needs a licence number and jurisdiction (validated in
+ *          components/shared/InviteDialog.tsx).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";
@@ -19,6 +33,7 @@ const MATRIX: Record<Role, boolean[]> = {
 };
 const ROLES: Role[] = ["owner", "engineer", "pe-reviewer", "contributor", "viewer"];
 
+/** The Settings → Permissions pane. */
 export function PermissionsPane() {
   const app = useAppApi();
   const members = useApp((s) => s.members);

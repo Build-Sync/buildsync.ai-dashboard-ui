@@ -1,10 +1,28 @@
+/**
+ * lib/scene/residence.ts
+ *
+ * WHAT   Builds the sample two-storey house: 24' × 32' footprint, CMU walls, gable roof (high-velocity
+ *        hurricane zone), with foundation, framing, MEP runs, devices, trees, contours, callouts, stress
+ *        points, room labels, door swings, dimensions and grid.
+ * FOR    getScene("residence"). The ridge runs along Y so the section plane (Y = const) cuts the roof as a
+ *        profile.
+ * DEBUG  - Walls and beams are split at column positions so nothing overlaps; pseudo-openings carve those
+ *          zones.
+ *        - To change the building, edit the calls here; ids must stay unique and match mock-data issues,
+ *          clashes and checks that refer to them.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { SceneBuilder, type BaseOpts, type Opening } from "./builder";
 import type { Category, LevelKey, PhaseKey, Scene, V2, V3 } from "./types";
 
 /* Residence_2BR_Miami — two storeys, 24' × 32' footprint, CMU walls, gable roof (HVHZ).
  * Ridge runs along Y so the section plane (Y = const) cuts the roof as a profile. */
 
+/** Building width in feet (east-west). */
 export const W = 24;
+/** Building depth in feet (north-south). */
 export const D = 32;
 const T = 0.67; // exterior wall
 const t = 0.33; // partition
@@ -55,6 +73,7 @@ function colZones(side: "S" | "N" | "W" | "E", height = 99): Opening[] {
   return out;
 }
 
+/** Build the residence scene. */
 export function buildResidence(): Scene {
   const b = new SceneBuilder();
 

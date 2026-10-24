@@ -1,3 +1,19 @@
+/**
+ * components/workspace/StatusBar.tsx
+ *
+ * WHAT   The 26 px bottom bar: drafting toggles (MODEL, GRID, SNAP, ORTHO, POLAR, OSNAP, 3DOSNAP, DYN, LWT),
+ *        live cursor coordinates in the chosen units, active level, unit system, drawing scale, the Plan Health
+ *        Score chip, and the save state with the active tool.
+ * FOR    At-a-glance state and the AutoCAD-style toggles. Each toggle runs the command of the same name, so the
+ *        keyboard (F-keys, typing) and the mouse stay in step.
+ * DEBUG  - A toggle does nothing: its command must exist in lib/commands.ts (MODEL toggles the store directly).
+ *        - "Saved N min ago" differs between server and browser: useRelative shows fixed mock text on the first
+ *          render and the live time only after mount, which avoids a hydration mismatch.
+ *        - Coordinates in the wrong format: fmtCoord uses Settings → Units.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -41,6 +57,7 @@ function useRelative(base: number | null): string {
   return m < 1 ? "Saved just now" : `Saved ${m} min ago`;
 }
 
+/** The bottom status bar. */
 export function StatusBar() {
   const ws = useWsApi();
   const { run } = useRunner();

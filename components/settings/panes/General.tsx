@@ -1,3 +1,20 @@
+/**
+ * components/settings/panes/General.tsx
+ *
+ * WHAT   Settings → General: language, auto-save (with its interval), the advisory banner (locked on until a PE
+ *        licence is verified), default jurisdiction, start screen and the update check.
+ * FOR    The `settings.general` values (lib/settings.ts). Auto-save is carried out by
+ *        components/workspace/Workspace.tsx; the start screen decides what /app opens (app/app/page.tsx,
+ *        through the bs_start cookie).
+ * DEBUG  - The advisory switch cannot be turned off: by design until selectVerified is true (a PE licence on
+ *          the Account page).
+ *        - Start screen has no effect: bs_start is written by AppStoreProvider only after the saved settings
+ *          have loaded (lib/store/app-provider.tsx).
+ *        - A value is not kept: panes edit a draft, which is saved only by Apply.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import Link from "next/link";
@@ -8,6 +25,7 @@ import { selectVerified } from "@/lib/store/app-store";
 import { useApp } from "@/lib/store/app-provider";
 import { Hint, Row, useDraft } from "../rows";
 
+/** The Settings → General pane. */
 export function GeneralPane() {
   const { s, set } = useDraft();
   const verified = useApp(selectVerified);

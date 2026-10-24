@@ -1,3 +1,24 @@
+/**
+ * lib/store/app-store.ts
+ *
+ * WHAT   The global (cross-project) client state: profile, settings and the unapplied settings draft, AI agents
+ *        and the active agent, seat, team members, command-line history, toasts, open document tabs and unsaved
+ *        flags.
+ * FOR    Created once per browser by <AppStoreProvider>, never as a module singleton, so the server never
+ *        shares state between requests. Only the non-secret settings are saved (localStorage, key bs.settings);
+ *        keys, agents and project data never are.
+ * DEBUG  - Saved settings overwritten by defaults: persistence uses skipHydration and a write guard (`ready`);
+ *          writes are dropped until rehydrate() has finished (this fixed settings being clobbered when a
+ *          Settings page was opened directly).
+ *        - A draft shows defaults after a direct load: merge() re-seeds the draft from the loaded settings.
+ *        - Storage blocked (private window): getItem throws and the store keeps the defaults; `hydrated` still
+ *          becomes true.
+ *        - selectEffective returns the draft while Settings is open, so previews (theme, accent, UI scale) show
+ *          live.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { AGENT_META, initialAgents } from "../agents";
@@ -16,6 +37,7 @@ import { uid } from "../utils";
  * Created once per client through <AppStoreProvider>, never as a module singleton, so the
  * server never shares state between requests. */
 
+/** The user's profile and PE credentials. */
 export interface Profile {
   name: string;
   email: string;
@@ -26,6 +48,7 @@ export interface Profile {
   twoFactor: boolean;
 }
 
+/** State and actions of the global store. */
 export interface AppState {
   profile: Profile;
   settings: Settings;
@@ -70,8 +93,10 @@ export interface AppState {
   setMemberRole: (id: string, role: Role) => void;
 }
 
+/** The global store. */
 export type AppStore = StoreApi<AppState>;
 
+/** Create the global store (call once per browser). */
 export function createAppStore(): AppStore {
   // `persist` writes on every update. With skipHydration the saved settings are only read once the
   // provider mounts, so any earlier update (e.g. the settings frame's beginEdit) would overwrite
@@ -212,4 +237,5 @@ export function createAppStore(): AppStore {
 export const selectEffective = (s: AppState): Settings => s.draft ?? s.settings;
 /** A seat is verified once a PE license number is on file; unverified seats can't hide the advisory banner. */
 export const selectVerified = (s: AppState): boolean => s.seat !== "student" && s.profile.peLicense.trim().length >= 4;
+/** The connected agents. */
 export const selectConnected = (s: AppState): Agent[] => s.agents.filter((a) => a.connected);

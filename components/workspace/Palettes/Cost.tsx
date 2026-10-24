@@ -1,3 +1,16 @@
+/**
+ * components/workspace/Palettes/Cost.tsx
+ *
+ * WHAT   The Cost palette: total with range and cost basis, hard / soft / land split, top materials and
+ *        workforce. When a Timeline window is set, the figures cover only that window.
+ * FOR    Cost estimates from the project and the timeline (lib/timeline.ts windowMetrics). Money is formatted
+ *        with the currency in Settings → Units.
+ * DEBUG  - Figures look partial: a Timeline window is active (the banner at the top of the palette says so);
+ *          clear it in the Timeline dock.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useMemo } from "react";

@@ -1,9 +1,28 @@
+/**
+ * components/workspace/Ribbon/ribbon.config.ts
+ *
+ * WHAT   The definition of the whole ribbon: the tabs (home, insert, annotate, analyze, collaborate, ai, view,
+ *        manage), each with panels of large and small buttons. Every item names its icon, the command it runs,
+ *        a tooltip description and an optional accent-fill rule.
+ * FOR    RibbonTabs and RibbonPanels render from RIBBON. To add a button, add an item here and make sure its
+ *        command exists in lib/commands.ts (or is a /settings route).
+ * DEBUG  - A button does nothing: item.command must be a registered command or a /settings route.
+ *        - A button is highlighted wrongly: item.active rules (toggle:grid, layer:electrical, view:2d,
+ *          style:xray, section, dock:timeline, persp, ortho3d, flag:rulers) are interpreted by isActive in
+ *          RibbonPanels.tsx.
+ *        - Layout looks odd: panelColumns puts each large button in its own column and stacks up to three
+ *          consecutive small buttons.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { IconKey } from "@/components/icons";
 import type { RibbonTabId } from "@/lib/types";
 
 /* Ribbon definition (spec §10.4). Large buttons are 28px icons with a label under them;
  * consecutive small buttons stack three to a column. Order inside a panel is render order. */
 
+/** One ribbon button: icon, label, command, tooltip text, size and optional active rule. */
 export interface RibbonItem {
   id: string;
   label: string;
@@ -18,12 +37,14 @@ export interface RibbonItem {
   active?: string;
 }
 
+/** A named group of buttons inside a tab. */
 export interface RibbonPanel {
   id: string;
   name: string;
   items: RibbonItem[];
 }
 
+/** A ribbon tab with its panels. */
 export interface RibbonTab {
   id: RibbonTabId;
   label: string;
@@ -45,6 +66,7 @@ function item(
   return { id, label, icon, command, desc, size, ...extra };
 }
 
+/** All ribbon tabs in display order. */
 export const RIBBON: RibbonTab[] = [
   {
     id: "home",
@@ -520,6 +542,7 @@ export const RIBBON: RibbonTab[] = [
   },
 ];
 
+/** The ribbon tabs indexed by tab id. */
 export const RIBBON_BY_ID: Record<RibbonTabId, RibbonTab> = Object.fromEntries(RIBBON.map((t) => [t.id, t])) as Record<RibbonTabId, RibbonTab>;
 
 /** Group a panel's items into render columns: a large button, or up to three stacked small ones. */

@@ -1,3 +1,18 @@
+/**
+ * components/settings/useFocusTrap.ts
+ *
+ * WHAT   Hook that, while enabled, moves focus into a dialog element, keeps Tab and Shift+Tab cycling inside
+ *        it, and gives focus back to the previously focused element when it unmounts.
+ * FOR    The settings modal (SettingsFrame), so keyboard and screen-reader users cannot tab into the workspace
+ *        behind it.
+ * DEBUG  - Tab escapes the dialog: hidden controls are skipped by the offsetParent filter; a visible control
+ *          type missing from FOCUSABLE needs adding there.
+ *        - Focus is not restored on close: the previous element is read on mount; if it was removed meanwhile
+ *          nothing is focused.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, type RefObject } from "react";

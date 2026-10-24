@@ -1,3 +1,19 @@
+/**
+ * lib/scene/builder.ts
+ *
+ * WHAT   SceneBuilder, the tool the sample buildings are modelled with: box, extrudeZ, extrudeY, wall (a wall
+ *        run with door and window openings and infill), device and run, then finish() produces the Scene
+ *        (elements grouped from prisms, bounds, camera radius). Also small polygon helpers (rect, ccw,
+ *        signedArea, prismBounds).
+ * FOR    lib/scene/residence.ts and clinic.ts. Each call adds one or more prisms that share an element id, so
+ *        selecting a wall with openings selects all of its parts.
+ * DEBUG  - A wall shows gaps or overlaps: openings are measured along the wall axis; residence.ts and clinic.ts
+ *          add pseudo-openings (no infill) that carve column zones out of wall and beam runs.
+ *        - A prism is missing: extrudeZ / extrudeY return null for degenerate polygons or zero height.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type {
   Callout,
   Category,
@@ -22,6 +38,7 @@ import type {
 } from "./types";
 import type { LayerId } from "../types";
 
+/** A rectangle as four points, counter-clockwise. */
 export const rect = (x0: number, y0: number, x1: number, y1: number): V2[] => [
   [x0, y0],
   [x1, y0],
@@ -40,10 +57,12 @@ export function signedArea(poly: V2[]): number {
   return a / 2;
 }
 
+/** The polygon with counter-clockwise winding. */
 export function ccw(poly: V2[]): V2[] {
   return signedArea(poly) < 0 ? [...poly].reverse() : poly;
 }
 
+/** Options every element shares: id, name, category, layer, level, material, colour, phase. */
 export interface BaseOpts {
   id: string;
   name: string;
@@ -63,6 +82,7 @@ export interface BaseOpts {
   lift?: number;
 }
 
+/** A door or window opening in a wall. */
 export interface Opening {
   id: string;
   at: number;
@@ -74,6 +94,7 @@ export interface Opening {
   swing?: { hinge: "start" | "end"; dir: 1 | -1 };
 }
 
+/** Options for a wall run. */
 export interface WallOpts extends BaseOpts {
   axis: "x" | "y";
   /** cross-axis extent */
@@ -87,6 +108,7 @@ export interface WallOpts extends BaseOpts {
   openings?: Opening[];
 }
 
+/** Collects prisms, devices and runs and turns them into a Scene. */
 export class SceneBuilder {
   prisms: Prism[] = [];
   runs: Run[] = [];
@@ -224,6 +246,7 @@ export class SceneBuilder {
   }
 }
 
+/** The bounding box of a prism. */
 export function prismBounds(p: Prism): { min: V3; max: V3 } {
   let x0 = Infinity;
   let x1 = -Infinity;

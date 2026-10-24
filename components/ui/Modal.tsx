@@ -1,3 +1,21 @@
+/**
+ * components/ui/Modal.tsx
+ *
+ * WHAT   The accessible modal dialog used by every dialog in the app: dimmed backdrop, focus moves in on open
+ *        and returns on close, Tab stays inside, Esc and a backdrop click close it. Esc is handled on the
+ *        document so it still works when focus has left the dialog (for example the focused button disabled
+ *        itself); only the top-most modal answers.
+ * FOR    Connect/Manage agent, Invite member, New project, Prompt to Plan, Import/Export, PE review, schedule
+ *        and QTO dialogs.
+ * DEBUG  - Esc does nothing: check the module-level openModals stack; a modal that never unmounted would stay
+ *          top-most.
+ *        - Focus lands on the wrong control: mark the one you want with data-autofocus.
+ *        - A dialog opens behind another: raise its z prop (the Connect dialog uses 80 over the settings
+ *          frame).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
@@ -14,6 +32,7 @@ const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:n
 /** open modals, last = top-most */
 const openModals: symbol[] = [];
 
+/** Dialog with a title, optional subtitle, body, and an optional footer for buttons. */
 export function Modal({
   title,
   subtitle,

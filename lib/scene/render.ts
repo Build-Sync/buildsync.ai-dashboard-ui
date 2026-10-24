@@ -1,3 +1,26 @@
+/**
+ * lib/scene/render.ts
+ *
+ * WHAT   The SVG renderer. renderScene takes a scene, a projector, a visual style and the view state (plan cut,
+ *        section plane, layers, hidden and isolated elements, phase state, tints, sun) and returns SVG markup:
+ *        it clips prisms against the section plane, builds faces, sorts them back to front (painter's algorithm
+ *        with cycle breaking), shades them, and adds MEP runs, trees and shadows. Also colour helpers, the
+ *        stress colour scale, element outlines and convex hulls for overlays.
+ * FOR    ModelViewport and SheetView. They inject the result with dangerouslySetInnerHTML, so only geometry,
+ *        ids and colours from the scene are written into the string (never user text, unless it is escaped);
+ *        every element carries a data-el id so clicks can be mapped back to elements. The renderer can later be
+ *        replaced by WebGL behind the same input / output types.
+ * DEBUG  - Faces flicker or overlap wrongly: sortStats records the cycles broken in the last sort; the pairwise
+ *          order is decided by the comparison function after sortStats.
+ *        - An element is missing: it can be filtered by layer, hidden, isolated, the plan level, phaseState,
+ *          sectionOnly or underground flags.
+ *        - The stress colour scale is 0-4.8 ksi (STRESS_MAX), blue to red.
+ *        - Performance: the result is memoised by the viewport on its inputs; keep RenderInput values stable
+ *          (Sets and maps are rebuilt only when their source changes).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { LayerId, VisualStyle } from "../types";
 import { clamp } from "../utils";
 import type { Projector } from "./camera";
@@ -29,10 +52,12 @@ function hexToRgb(hex: string): RGB {
 const toHex = (c: RGB) =>
   "#" + c.map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, "0")).join("");
 
+/** Lighten (k > 0) or darken (k < 0) a hex colour. */
 export function shadeHex(hex: string, k: number): string {
   const [r, g, b] = hexToRgb(hex);
   return toHex([r * k, g * k, b * k]);
 }
+/** Blend two hex colours by t. */
 export function mixHex(a: string, b: string, t: number): string {
   const A = hexToRgb(a);
   const B = hexToRgb(b);
@@ -48,6 +73,7 @@ const STRESS_STOPS: [number, string][] = [
   [0.75, "#f0c63c"],
   [1, "#ef4a4a"],
 ];
+/** Colour for a stress value in ksi. */
 export function stressColor(ksi: number): string {
   const t = clamp(ksi / STRESS_MAX, 0, 1);
   for (let i = 1; i < STRESS_STOPS.length; i++) {
@@ -57,16 +83,19 @@ export function stressColor(ksi: number): string {
   }
   return STRESS_STOPS[STRESS_STOPS.length - 1][1];
 }
+/** Gradient stops for the stress legend and SVG gradient. */
 export const STRESS_GRADIENT = STRESS_STOPS;
 
 /* ── input / output ───────────────────────────────────────────────────── */
 export type PhaseState = "built" | "active" | "future";
 
+/** A colour wash on an element: material highlight, pending proposal, clash or selection. */
 export interface Tint {
   color: string;
   amount: number;
 }
 
+/** Everything the renderer needs to draw one frame. */
 export interface RenderInput {
   scene: Scene;
   proj: Projector;
@@ -90,6 +119,7 @@ export interface RenderInput {
   ghostMep: boolean;
 }
 
+/** The SVG markup and how many faces it contains. */
 export interface RenderResult {
   svg: string;
   faceCount: number;
@@ -834,12 +864,14 @@ export function convexHull(points: V2[]): V2[] {
   return lower.concat(upper);
 }
 
+/** Screen-space outline, box and hull of an element, for selection overlays. */
 export interface ElementOutline {
   hull: V2[];
   grips: V2[];
   box: { x: number; y: number; w: number; h: number };
 }
 
+/** Compute an element's screen-space outline for the current projector. */
 export function elementOutline(el: SceneElement, proj: Projector): ElementOutline {
   const corners: V2[] = [];
   for (const x of [el.min[0], el.max[0]])
@@ -868,6 +900,7 @@ export function planCutFor(scene: Scene, level: LevelKey): number {
   return scene.levelZ[level] + 4;
 }
 
+/** Which levels are drawn in the plan for a level. */
 export function planLevelsFor(level: LevelKey): LevelKey[] {
   if (level === "level2") return ["site", "level2"];
   if (level === "roof") return ["site", "level2", "roof"];

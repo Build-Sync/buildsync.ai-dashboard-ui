@@ -1,3 +1,18 @@
+/**
+ * lib/scene/index.ts
+ *
+ * WHAT   The public face of the scene module: getScene (builds each scene once and caches it), the element
+ *        details for the Properties palette (geometry, material, structural data, cost), the Model Explorer
+ *        tree (buildModelTree), the material usage list and level labels. It also re-exports the scene types.
+ * FOR    useScene() in the workspace components calls getScene(project.sceneKind). Rates in elementDetails are
+ *        placeholder unit costs.
+ * DEBUG  - Properties shows odd numbers: elementDetails derives size and quantity from the element's bounding
+ *          box and per-category rates (the RATES table).
+ *        - The tree misses an element: buildModelTree groups elements by level and category from the scene.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { Project, SceneKind } from "../types";
 import { buildBlank, buildClinic } from "./clinic";
 import { signedArea } from "./builder";
@@ -8,6 +23,7 @@ export * from "./types";
 
 const cache = new Map<SceneKind, Scene>();
 
+/** The (cached) scene for a scene kind. */
 export function getScene(kind: SceneKind): Scene {
   let s = cache.get(kind);
   if (!s) {
@@ -33,6 +49,7 @@ const LEVEL_LABEL: Record<LevelKey, string> = {
   level2: "Level 2",
   roof: "Roof",
 };
+/** Display name of a level. */
 export const levelLabel = (k: LevelKey) => LEVEL_LABEL[k];
 
 function elementVolume(scene: Scene, el: SceneElement): number {
@@ -98,6 +115,7 @@ const RATES: Record<Category, [number, number]> = {
   Paving: [6.2, 4.8],
 };
 
+/** Sections of properties (general, geometry, material, structural, cost) for one element. */
 export function elementDetails(scene: Scene, el: SceneElement, rename?: string): ElementDetails {
   const dx = el.max[0] - el.min[0];
   const dy = el.max[1] - el.min[1];
@@ -198,6 +216,7 @@ const CAT_GROUPS: [string, Category[]][] = [
   ["Stairs", ["Stair"]],
 ];
 
+/** The Project → Site → Building → levels → categories → elements tree. */
 export function buildModelTree(scene: Scene, project: Project): TreeNode[] {
   const els = scene.elements;
   const ids = (list: SceneElement[]) => list.map((e) => e.id);

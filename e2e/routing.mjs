@@ -1,4 +1,25 @@
-/* Routing contract: /app redirects, /demo, deep links, settings as a modal over the workspace and as a page. */
+/**
+ * e2e/routing.mjs
+ *
+ * WHAT   Browser tests of the routing contract: the landing page; /app redirects (to the demo project, or to
+ *        the last-open project from the bs_last_project cookie); the not-found page for an unknown project;
+ *        /demo and its banner; URL query mirroring (?tab, ?panel, ?explorer, ?view, ?section) including deep
+ *        links; Settings opened from the gear as a modal over the workspace (state intact behind it, Close
+ *        returns to the exact URL) and opened directly as a normal page; /settings redirect; unknown settings
+ *        page 404.
+ * FOR    `npm run e2e:routing` (or `npm run e2e` for every suite). Needs the app running (BASE, default
+ *        http://localhost:3000) and a Chromium. Start with `npm run dev` or, for production behaviour, `npm run
+ *        build && npm start`.
+ * DEBUG  - A check fails only in a full run: the checks share one page and cookies; each check should open the
+ *          route it needs.
+ *        - "Unknown project" check logs a 404 console error: that check lists it in `allow`; any other console
+ *          error fails the check.
+ *        - Timing flakes right after a page load: use ready() from the harness, which waits for the workspace
+ *          to hydrate.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { check, ctx, eq, finish, has, path, page, shot, ready, BASE } from "./harness.mjs";
 
 await check("landing page renders with links", async () => {

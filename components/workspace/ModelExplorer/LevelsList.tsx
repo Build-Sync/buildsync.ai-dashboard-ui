@@ -1,3 +1,16 @@
+/**
+ * components/workspace/ModelExplorer/LevelsList.tsx
+ *
+ * WHAT   The Levels tab: the floors with their elevation (Roof, Level 2, Level 1, Foundation, Site). Clicking
+ *        one moves the camera to that floor's elements; in 2D, Level 1 and Level 2 switch the plan.
+ * FOR    Level navigation. Elevations follow Settings → Units (ft-in labels in imperial, fmtLength otherwise).
+ * DEBUG  - Clicking Roof or Foundation does not switch the plan: only level1 and level2 have a plan view.
+ *        - The camera does not move: focusElements receives at most 60 element ids of that level (topography
+ *          and landscape are skipped).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

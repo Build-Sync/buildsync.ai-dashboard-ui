@@ -1,3 +1,21 @@
+/**
+ * lib/services/analysis.ts
+ *
+ * WHAT   Stubs of the analysis services: stress test (runStressTest), disaster simulation (runSimulation),
+ *        Agent Council (convene), AI analysis recommendations (runAiAnalysis), Prompt-to-Plan (generatePlan)
+ *        and the compliance re-check (recheckCompliance). All output is deterministic mock data returned after
+ *        a short delay.
+ * FOR    The Stress Test, Simulation, Council, AI Analysis and Compliance palettes and the Prompt to Plan
+ *        dialog, through the workspace store actions. The result shapes are what the UI renders, so a real
+ *        service must return the same shapes.
+ * DEBUG  - Results change between runs: they should not; every number derives from a hash of the inputs
+ *          (lib/utils.ts hash).
+ *        - A new scenario type needs an entry in SIM_TYPES (label, unit, range) and a case in runSimulation.
+ *        - Everything here is advisory mock output; no engineering calculation is real.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { getScene } from "../scene";
 import type { AgentId, Project } from "../types";
 import { clamp, hash, sleep } from "../utils";
@@ -12,23 +30,29 @@ export const LOAD_CASES = [
   { id: "seismic", label: "Seismic (Site Class D)" },
   { id: "combined", label: "Combined (wind + live)" },
 ] as const;
+/** Id of a stress-test load case. */
 export type LoadCaseId = (typeof LOAD_CASES)[number]["id"];
 
+/** Environmental conditions for a stress test. */
 export const CONDITIONS = [
   { id: "normal", label: "Normal service" },
   { id: "hurricane", label: "Hurricane exposure C" },
   { id: "flood", label: "Flood — 3 ft stillwater" },
   { id: "fire", label: "Fire exposure — 1 h" },
 ] as const;
+/** Id of a stress-test condition. */
 export type ConditionId = (typeof CONDITIONS)[number]["id"];
 
+/** Mesh densities for a stress test. */
 export const MESHES = [
   { id: "coarse", label: "Coarse (fast)" },
   { id: "medium", label: "Medium" },
   { id: "fine", label: "Fine (slow)" },
 ] as const;
+/** Id of a mesh density. */
 export type MeshId = (typeof MESHES)[number]["id"];
 
+/** Stress-test inputs: element, load case, condition and mesh. */
 export interface StressSetup {
   elementId: string;
   loadCase: LoadCaseId;
@@ -36,6 +60,7 @@ export interface StressSetup {
   mesh: MeshId;
 }
 
+/** Stress-test output: stress, strain, deflection, safety factor, load and the calculation. */
 export interface StressResult {
   setup: StressSetup;
   maxStress: number;
@@ -61,6 +86,7 @@ const ALLOWABLE_KSI = 4.2;
 
 const LIMIT_BY_CATEGORY: Record<string, number> = { Beam: 0.6, Slab: 0.75, Wall: 0.9, Roof: 1.1, Truss: 1.1, Column: 0.5 };
 
+/** Run a (mock) stress test. */
 export async function runStressTest(project: Project, setup: StressSetup): Promise<StressResult> {
   const scene = getScene(project.sceneKind);
   const k = CASE_K[setup.loadCase] * COND_K[setup.condition] * MESH_K[setup.mesh];
@@ -138,8 +164,10 @@ export const SIM_TYPES = [
   { id: "lighting", label: "Lighting", unit: "lux", min: 50, max: 1000, step: 10, def: 300 },
   { id: "water", label: "Water", unit: "in/hr rain", min: 1, max: 12, step: 0.5, def: 4 },
 ] as const;
+/** Id of a disaster-simulation scenario type. */
 export type SimType = (typeof SIM_TYPES)[number]["id"];
 
+/** Simulation inputs: type, intensity, direction and duration. */
 export interface SimSetup {
   type: SimType;
   intensity: number;
@@ -149,12 +177,14 @@ export interface SimSetup {
   duration: number;
 }
 
+/** One labelled result value of a simulation. */
 export interface SimMetric {
   label: string;
   value: string;
   tone: "ok" | "warn" | "bad";
 }
 
+/** Simulation output: metrics, risk, failure points and the calculation. */
 export interface SimResult {
   setup: SimSetup;
   metrics: SimMetric[];
@@ -167,8 +197,10 @@ export interface SimResult {
 }
 
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+/** Compass point name (N, NE …) for a bearing. */
 export const compassName = (deg: number) => COMPASS[Math.round(((deg % 360) / 45)) % 8];
 
+/** Run a (mock) disaster simulation. */
 export async function runSimulation(setup: SimSetup): Promise<SimResult> {
   await sleep(750);
   const from = compassName(setup.direction);
@@ -266,15 +298,19 @@ export async function runSimulation(setup: SimSetup): Promise<SimResult> {
 
 /* ── council ──────────────────────────────────────────────────────────── */
 export const COUNCIL_ROLES = ["Structural Engineer", "Cost Estimator", "Code Reviewer", "Project Manager"] as const;
+/** Roles the Agent Council assigns. */
 export type CouncilRole = (typeof COUNCIL_ROLES)[number];
+/** How an agent voted. */
 export type Vote = "support" | "conditional" | "oppose";
 
+/** One agent's role, vote and reasoning. */
 export interface CouncilCard {
   role: CouncilRole;
   agentId: AgentId;
   vote: Vote;
   argument: string;
 }
+/** The Council's cards and overall outcome. */
 export interface CouncilResult {
   question: string;
   cards: CouncilCard[];
@@ -295,6 +331,7 @@ const GENERIC: Record<Vote, string[]> = {
   oppose: ["The downside to cost and schedule is larger than the gain I can quantify.", "This creates a new compliance risk I can't justify yet."],
 };
 
+/** Put a question to several agents and collect their votes. */
 export async function convene(question: string, agents: AgentId[]): Promise<CouncilResult> {
   await sleep(900);
   const steel = /steel/i.test(question);
@@ -324,6 +361,7 @@ export async function convene(question: string, agents: AgentId[]): Promise<Coun
 
 /* ── AI analysis recommendations ──────────────────────────────────────── */
 export type RecCategory = "design" | "structural" | "material" | "cost-saving" | "constructability" | "code" | "efficiency" | "error";
+/** One AI-analysis recommendation with cost and impact. */
 export interface Recommendation {
   id: string;
   category: RecCategory;
@@ -334,6 +372,7 @@ export interface Recommendation {
   elementId?: string;
 }
 
+/** Display name of each recommendation category. */
 export const REC_LABEL: Record<RecCategory, string> = {
   design: "Design",
   structural: "Structural",
@@ -345,6 +384,7 @@ export const REC_LABEL: Record<RecCategory, string> = {
   error: "Detected error",
 };
 
+/** Run a (mock) AI design review. */
 export async function runAiAnalysis(project: Project): Promise<Recommendation[]> {
   await sleep(800);
   if (project.sceneKind === "blank") return [];
@@ -383,6 +423,7 @@ export interface GeneratedPlan {
   notes: string[];
 }
 
+/** Turn a description like "800 sq ft 2-bed 1-bath" into a starter plan summary. */
 export async function generatePlan(prompt: string): Promise<GeneratedPlan> {
   await sleep(1100);
   const sq = /(\d[\d,]*)\s*(?:sq|sf|square)/i.exec(prompt);

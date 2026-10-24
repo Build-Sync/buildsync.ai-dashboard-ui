@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Palettes/Comments.tsx
+ *
+ * WHAT   The Comments palette: threads with an unresolved-only filter. Add a comment (Ctrl+Enter or ⌘+Enter
+ *        posts), @mention people, attach files, pin to the selected element, reply, resolve / reopen and view
+ *        history.
+ * FOR    Collaboration on the open project (project.comments in the workspace store). Mentions autocomplete
+ *        from the members list in the app store.
+ * DEBUG  - A comment is not pinned: pinning needs a selected element and the pin switch on.
+ *        - The @ list does not appear: it shows only while the text ends with @ and letters, and matches member
+ *          names without spaces.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";

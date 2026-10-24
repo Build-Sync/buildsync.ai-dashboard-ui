@@ -1,3 +1,20 @@
+/**
+ * lib/services/ai.ts
+ *
+ * WHAT   Stub of AI routing: classifyPrompt sorts a plain-English prompt into a task (Prompt-to-Plan, stress,
+ *        cost, compliance or chat), routePrompt picks the agent from the routing table (falling back to the
+ *        active agent when the chosen one is not connected) and returns a canned answer, plus a Proposal when
+ *        the prompt asks for a model edit (detectEdit).
+ * FOR    The command line when text is not a command (lib/commands.ts askAgent). Real model calls replace this
+ *        behind the same signatures. Agents only ever propose edits.
+ * DEBUG  - The wrong task is chosen: classifyPrompt uses keyword patterns, checked in the order p2p, stress,
+ *          cost, compliance, chat.
+ *        - No proposal appears: detectEdit recognises only three phrasings (concrete walls, steel frame, add a
+ *          beam or column).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { AGENT_META, TASK_LABEL } from "../agents";
 import type { AgentId, Proposal, TaskKind } from "../types";
 import { hash, sleep, uid } from "../utils";
@@ -6,6 +23,7 @@ import { hash, sleep, uid } from "../utils";
  * routing table, and returns a canned answer (plus a proposal for model edits).
  * Real calls replace this behind the same signature. */
 
+/** Model context sent with a prompt (selection, level, view, jurisdiction). */
 export interface AiContext {
   selection: string[];
   level: string;
@@ -14,6 +32,7 @@ export interface AiContext {
   shareContext: boolean;
 }
 
+/** An agent's answer: the task, the agent, text lines and an optional proposal. */
 export interface AiResponse {
   task: TaskKind;
   agentId: AgentId;
@@ -23,6 +42,7 @@ export interface AiResponse {
   fellBack?: boolean;
 }
 
+/** Decide which kind of task a prompt is. */
 export function classifyPrompt(prompt: string): TaskKind {
   const p = prompt.toLowerCase();
   if (/(\d[\d,]*)\s*(sq|sf|square)|\b\d\s*-?\s*(bed|br)\b|bedroom|starter plan|design a|generate a/.test(p)) return "p2p";
@@ -32,6 +52,7 @@ export function classifyPrompt(prompt: string): TaskKind {
   return "chat";
 }
 
+/** Recognise a request to change the model; returns the proposal effect or null. */
 export function detectEdit(prompt: string): Proposal["effect"] | null {
   const p = prompt.toLowerCase();
   if (/(change|make|switch|convert).*(exterior )?walls?.*concrete|concrete.*exterior walls?/.test(p)) return "walls-concrete";
@@ -68,6 +89,7 @@ const CANNED: Record<TaskKind, (ctx: AiContext, prompt: string) => string[]> = {
   ],
 };
 
+/** Route a prompt to an agent and return its (mock) answer. */
 export async function routePrompt(args: {
   prompt: string;
   activeAgent: AgentId;
@@ -136,6 +158,7 @@ export async function routePrompt(args: {
   return { task, agentId, text, proposal, fellBack: agentId !== wanted };
 }
 
+/** The "→ Routed to X · task" line shown in the command history. */
 export function routeLabel(task: TaskKind, agentId: AgentId): string {
   return `→ Routed to ${AGENT_META[agentId].name} · ${TASK_LABEL[task].toLowerCase()}`;
 }

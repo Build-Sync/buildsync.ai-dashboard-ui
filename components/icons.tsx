@@ -1,3 +1,21 @@
+/**
+ * components/icons.tsx
+ *
+ * WHAT   The icon registry. Maps short string keys ("wall", "stress", "undo"…) to icon components: lucide-react
+ *        glyphs plus a handful of hand-drawn CAD glyphs (line, polyline, rectangle, circle, arc, spline, hatch,
+ *        column, beam, slab, stress) drawn on the same 24x24 grid and stroke weight. <Icon name="…"/> renders
+ *        one.
+ * FOR    The ribbon configuration, menus and palettes refer to icons by key only, so the icon set can change in
+ *        this one file. IconKey is the union of all keys, so a misspelt key is a compile error.
+ * DEBUG  - Missing or wrong icon: look the key up in the ICONS table; TypeScript rejects keys that are not in
+ *          it.
+ *        - Icon looks too thin or heavy: strokeWidth defaults to 1.7 in <Icon/>; the ribbon passes 1.5 for
+ *          large buttons.
+ *        - A CAD glyph looks off: they are inline SVG paths in the cad(...) calls near the top.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { ComponentType, SVGProps } from "react";
 import {
   Accessibility, Activity, AirVent, AlignStartVertical, AppWindow, Archive, ArrowDownToLine, ArrowUpRight, ArrowUpToLine, Armchair,
@@ -19,6 +37,7 @@ import {
   ArrowDown, Webhook, Server, Database, Hospital, Building, Package, Boxes, Table, ClipboardList, Heater, Snowflake,
 } from "lucide-react";
 
+/** Props every icon component accepts: size and strokeWidth plus any SVG attribute. */
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "ref"> {
   size?: number | string;
   strokeWidth?: number | string;
@@ -115,8 +134,10 @@ export const ICONS = {
   shieldCheck: ShieldCheck, mapIcon: MapIcon, scan: ScanSearch, ruler: Ruler,
 } satisfies Record<string, IconC>;
 
+/** Union of all valid icon keys (the keys of ICONS). */
 export type IconKey = keyof typeof ICONS;
 
+/** Renders the icon registered under `name` at the given size and stroke weight. */
 export function Icon({ name, size = 16, strokeWidth = 1.7, className }: { name: IconKey; size?: number; strokeWidth?: number; className?: string }) {
   const C = ICONS[name];
   return <C size={size} strokeWidth={strokeWidth} className={className} />;

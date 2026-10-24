@@ -1,3 +1,20 @@
+/**
+ * lib/scene/camera.ts
+ *
+ * WHAT   The viewport camera: the Camera type (bearing, pitch, zoom, pan, perspective), the screen basis for a
+ *        bearing and pitch, makeProjector (world to screen and back, orthographic or perspective), the named
+ *        views (SW / SE / NE / NW isometric, Top, Front …), describeView (nearest named view) and orbit.
+ * FOR    ModelViewport, ViewCube, the sheets and the overlays all project through the same Projector so
+ *        everything lines up. bearing is the compass bearing of the camera as seen from the target (225° =
+ *        south-west).
+ * DEBUG  - The label says Custom: describeView only names a view within a few degrees of a named one.
+ *        - Dragging orbits the wrong way: see orbit(); bearing changes by -dx * 0.45 and pitch by dy * 0.35,
+ *          pitch limited to ±89°.
+ *        - Perspective looks too strong or flat: FOCAL (feet) in makeProjector.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { clamp, deg, rad } from "../utils";
 import type { V2, V3 } from "./types";
 
@@ -5,6 +22,7 @@ import type { V2, V3 } from "./types";
  * `bearing` is the compass bearing of the camera as seen from the target
  * (225° = south-west), `pitch` is its elevation above the horizon. */
 
+/** Where the viewport looks from. */
 export interface Camera {
   bearing: number;
   pitch: number;
@@ -14,6 +32,7 @@ export interface Camera {
   perspective: boolean;
 }
 
+/** Screen right, up and forward vectors in world space, and the direction to the camera. */
 export interface Basis {
   r: V3; // screen right
   u: V3; // screen up
@@ -22,6 +41,7 @@ export interface Basis {
   d: V3;
 }
 
+/** The screen basis for a bearing and pitch in degrees. */
 export function basis(bearing: number, pitch: number): Basis {
   const b = rad(bearing);
   const p = rad(pitch);
@@ -39,6 +59,7 @@ export function basis(bearing: number, pitch: number): Basis {
 
 const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
+/** Maps world points to screen pixels and screen pixels back to a horizontal plane. */
 export interface Projector {
   project: (p: V3) => { x: number; y: number; depth: number };
   basis: Basis;
@@ -48,6 +69,7 @@ export interface Projector {
   unproject: (sx: number, sy: number, z: number) => V2 | null;
 }
 
+/** Size of the drawing area in pixels. */
 export interface Viewport {
   w: number;
   h: number;
@@ -56,6 +78,7 @@ export interface Viewport {
 /** Perspective focal distance in feet; larger = flatter. */
 const FOCAL = 260;
 
+/** Build a projector for a camera, viewport size, target point and scene radius. */
 export function makeProjector(cam: Camera, vp: Viewport, target: V3, radius: number): Projector {
   const bs = basis(cam.bearing, cam.pitch);
   const fit = (Math.min(vp.w, vp.h) * 0.46) / Math.max(radius, 1);
@@ -97,8 +120,10 @@ export interface NamedView {
   plan?: boolean;
 }
 
+/** Pitch of a true isometric view, 35.264°. */
 export const ISO_PITCH = deg(Math.atan(1 / Math.SQRT2)); // 35.264°
 
+/** The named views offered by the ViewCube and the view menu. */
 export const NAMED_VIEWS: Record<string, NamedView> = {
   "SW Isometric": { name: "SW Isometric", bearing: 225, pitch: ISO_PITCH },
   "SE Isometric": { name: "SE Isometric", bearing: 135, pitch: ISO_PITCH },
@@ -114,8 +139,10 @@ export const NAMED_VIEWS: Record<string, NamedView> = {
   Elevation: { name: "Elevation", bearing: 180, pitch: 0 },
 };
 
+/** The four isometric views in clockwise order (not used by the UI yet). */
 export const ISO_VIEW_ORDER = ["SW Isometric", "SE Isometric", "NE Isometric", "NW Isometric"] as const;
 
+/** The camera "Reset view" returns to (SW isometric). */
 export const HOME_CAMERA: Camera = {
   bearing: 225,
   pitch: ISO_PITCH,
@@ -125,6 +152,7 @@ export const HOME_CAMERA: Camera = {
   perspective: false,
 };
 
+/** A bearing wrapped to 0-360°. */
 export function normBearing(b: number): number {
   return ((b % 360) + 360) % 360;
 }
@@ -145,6 +173,7 @@ export function describeView(cam: Camera): string {
   return best;
 }
 
+/** The camera after dragging by dxPx, dyPx pixels. */
 export function orbit(cam: Camera, dxPx: number, dyPx: number): Camera {
   return {
     ...cam,

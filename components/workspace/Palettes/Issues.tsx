@@ -1,3 +1,15 @@
+/**
+ * components/workspace/Palettes/Issues.tsx
+ *
+ * WHAT   The Issues palette: add an issue (pinned to the selected element), filter by status, and for each
+ *        issue the severity, title, location, assignee, status selector and due date.
+ * FOR    Tracking problems to resolution (project.issues). Clicking an issue zooms to its element; due dates
+ *        follow Settings → Units → Date format.
+ * DEBUG  - Zoom does nothing: the issue has no elementId.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";

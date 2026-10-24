@@ -1,3 +1,17 @@
+/**
+ * components/settings/panes/GridSnap.tsx
+ *
+ * WHAT   Settings → Grid & Snap: grid spacing, major-line interval, snap spacing, the six object-snap modes,
+ *        ortho and polar tracking (with the polar angle) and dynamic input.
+ * FOR    The `settings.gridSnap` values. components/workspace/Workspace.tsx copies the switches onto the
+ *        status-bar toggles (ORTHO, POLAR, DYN, OSNAP); the spacing values are stored for the drawing tools.
+ * DEBUG  - A status-bar toggle disagrees with this pane: Workspace.tsx re-applies these settings whenever they
+ *          change.
+ *        - "Major line every" is clamped to 2-50 on input, and falls back to 10 if the field is emptied.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Checkbox, Select, Switch } from "@/components/ui/controls";
@@ -13,6 +27,7 @@ const OSNAP: { id: OsnapMode; label: string }[] = [
   { id: "nearest", label: "Nearest" },
 ];
 
+/** The Settings → Grid & Snap pane. */
 export function GridSnapPane() {
   const { s, set } = useDraft();
   const g = s.gridSnap;

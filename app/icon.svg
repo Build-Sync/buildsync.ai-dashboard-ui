@@ -1,1 +1,13 @@
+<!--
+  app/icon.svg
+
+  WHAT    The BuildSync AI app icon: a white "B" on a rounded blue square (32 x 32 viewBox).
+  FOR     The browser tab icon (served by Next.js at /icon.svg), and the single source for the PNG icons:
+          run `node scripts/make-icons.mjs` after changing it to regenerate public/icons/*.png and app/apple-icon.png.
+  DEBUG   Keep the glyph as one <path .../> and the background as one <rect .../> with a hex fill:
+          scripts/make-icons.mjs reads them with simple patterns.
+
+  Author: Giordano Bertin-Maurice
+  Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+-->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#4C8DFF"/><path d="M10 7h7.2c3.4 0 5.4 1.7 5.4 4.3 0 1.7-.9 3-2.4 3.6 2 .5 3.2 2 3.2 4 0 2.9-2.3 5.1-6 5.1H10V7zm4.2 3.4v3.3h2.6c1.2 0 1.9-.6 1.9-1.7s-.7-1.6-1.9-1.6h-2.6zm0 6.3v3.7h3c1.4 0 2.2-.7 2.2-1.9s-.8-1.8-2.2-1.8h-3z" fill="#fff"/></svg>

@@ -1,3 +1,15 @@
+/**
+ * components/workspace/StartPage.tsx
+ *
+ * WHAT   The Start tab: New project, Prompt to Plan, recent projects and templates.
+ * FOR    The landing document of the workspace (workspace `doc` = "start"). Opening a project navigates to its
+ *        route; in /demo the templates open the Start-free dialog because the demo cannot create projects.
+ * DEBUG  - A recent project only shows a toast: only ids known to lib/services/projects.ts (isKnownProject) can
+ *          be opened.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

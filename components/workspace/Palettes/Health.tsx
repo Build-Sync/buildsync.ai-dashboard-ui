@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Palettes/Health.tsx
+ *
+ * WHAT   The Plan Health palette: a 0-100 score ring with a period selector, a plain-English summary and four
+ *        sub-scores (compliance, structural, cost, schedule) that link to their palettes (Schedule opens the
+ *        Timeline dock).
+ * FOR    The overall status of the open project, from project.health in the workspace store; the same score
+ *        shows as a chip in the status bar.
+ * DEBUG  - A brand-new project has a score of 0: the ring and the sub-scores show "—", as does the status-bar
+ *          chip.
+ *        - The numbers change with the period selector: they come from project.health.ranges[range].
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";
@@ -18,6 +33,7 @@ const SUBS: { key: "compliance" | "structural" | "cost" | "schedule"; label: str
   { key: "schedule", label: "Schedule", to: "timeline", hint: "Open the Timeline dock" },
 ];
 
+/** The Plan Health palette. */
 export function Health() {
   const ws = useWsApi();
   const health = useWs((s) => s.project.health);

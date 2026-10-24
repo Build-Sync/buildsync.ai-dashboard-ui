@@ -1,3 +1,14 @@
+/**
+ * components/workspace/CommandLine/AgentMenu.tsx
+ *
+ * WHAT   The agent selector menu: every AI agent with its model; connected ones can be chosen as the active
+ *        agent, disconnected ones are greyed and open their Connect dialog.
+ * FOR    Opened from the command line's agent button. It ends with "Manage connectors…", which opens Settings →
+ *        Integrations.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { AgentLogo } from "@/components/ui/AgentLogo";

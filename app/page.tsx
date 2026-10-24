@@ -1,3 +1,16 @@
+/**
+ * app/page.tsx
+ *
+ * WHAT   The landing page at /: a placeholder with the product name, a one-paragraph pitch and two links (the
+ *        demo and the workspace).
+ * FOR    A stand-in until the separately specified marketing site replaces this route. Nothing here is part of
+ *        the workspace.
+ * DEBUG  - The links are plain <Link>s to /demo and /app; if one 404s, check the matching route folder under
+ *          app/.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import Link from "next/link";
 
 /* Placeholder entry. The marketing site and homepage are specced separately

@@ -1,3 +1,16 @@
+/**
+ * components/workspace/Palettes/Clash.tsx
+ *
+ * WHAT   The Clash Detection palette: counts of hard and soft clashes, a re-run button, and a list of clashes
+ *        (kind, element A against element B, level) with a recommended fix. Clicking one zooms to the elements
+ *        and highlights the clash.
+ * FOR    Coordination between structure and MEP (project.clashes). The highlighted clash is the workspace
+ *        `showClashId`.
+ * DEBUG  - Run detection only simulates a re-run (a 0.9 s wait) and reports the stored clashes.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";

@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Palettes/Compliance.tsx
+ *
+ * WHAT   The Compliance palette: the active code set, pass / review / fail counts with a status filter, the
+ *        checks grouped by discipline (Structural, Egress & Accessibility, Energy, Fire) each citing its code
+ *        section, a Re-run button, and a flag on checks that need PE review.
+ * FOR    Code-check results from project.checks. Output is advisory until a licensed PE signs off, so the dock
+ *        shows the advisory footer under it.
+ * DEBUG  - "No checks yet": the project has no checks; run CODECHECK from the ribbon or command line.
+ *        - Re-run is a mock (recheckCompliance in lib/services/analysis.ts); it logs the counts and shows a
+ *          toast.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";

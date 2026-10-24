@@ -1,3 +1,18 @@
+/**
+ * lib/workspace-query.ts
+ *
+ * WHAT   The workspace state that lives in the URL query (tab, panel, explorer, view, section, doc, and the
+ *        demo project): its type, defaults, parsing from a URL, serialising back (only non-default values) and
+ *        comparison.
+ * FOR    UrlMirror in lib/store/workspace-provider.tsx keeps the store and the address bar in sync, and the
+ *        route pages parse the query on the server so a shared link opens in the same state.
+ * DEBUG  - A value in the URL is ignored: parseQuery accepts only ids listed in the *_IDS constants of
+ *          lib/types.ts and falls back to the default otherwise.
+ *        - The URL is long: serializeQuery leaves out values equal to DEFAULT_QUERY.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import {
   EXPLORER_IDS,
   PALETTE_IDS,
@@ -11,6 +26,7 @@ import {
 
 /* Workspace UI state that lives in the URL query (spec §8.1 routing rule 2). */
 
+/** The URL-mirrored workspace state. */
 export interface WorkspaceQuery {
   tab: RibbonTabId;
   panel: PaletteId;
@@ -23,6 +39,7 @@ export interface WorkspaceQuery {
   project: string | null;
 }
 
+/** Values that are not written to the URL. */
 export const DEFAULT_QUERY: WorkspaceQuery = {
   tab: "home",
   panel: "properties",
@@ -45,6 +62,7 @@ function oneOf<T extends string>(list: readonly T[], v: string | undefined, fall
   return v && (list as readonly string[]).includes(v) ? (v as T) : fallback;
 }
 
+/** Read a workspace query from URL search params (unknown values fall back to the defaults). */
 export function parseQuery(raw: Raw): WorkspaceQuery {
   const section = pick(raw, "section");
   const doc = pick(raw, "doc");
@@ -78,6 +96,7 @@ export function serializeQuery(q: WorkspaceQuery): string {
   return s ? `?${s}` : "";
 }
 
+/** True when two queries serialise to the same URL. */
 export function sameQuery(a: WorkspaceQuery, b: WorkspaceQuery): boolean {
   return serializeQuery(a) === serializeQuery(b);
 }

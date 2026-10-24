@@ -1,3 +1,19 @@
+/**
+ * components/workspace/Palettes/AiAnalysis.tsx
+ *
+ * WHAT   The AI Analysis palette: pick a connected agent, run an analysis, and read its recommendations (error,
+ *        code, structural, design, material, cost-saving …) with cost and impact changes. A chip names the
+ *        agent that answered.
+ * FOR    Recommendations from external AI agents (lib/services/analysis.ts, mock). "Show" zooms to the element;
+ *        "Apply" is the user's explicit approval: it records the recommendation as applied (one undo step) and
+ *        adds its cost change to the project total.
+ * DEBUG  - Run is disabled: no agent is connected, or a run is in progress; connect one in Settings →
+ *          Integrations.
+ *        - Apply is disabled: that recommendation is already in `appliedRecs` in the workspace store.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

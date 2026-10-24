@@ -1,3 +1,19 @@
+/**
+ * components/settings/panes/ConnectDialog.tsx
+ *
+ * WHAT   The Connect / Manage dialog for one AI agent: connection method (API key, OAuth or MCP), base URL
+ *        where needed, API key, default model tier, permission scopes, a Test connection button and Connect /
+ *        Save / Disconnect.
+ * FOR    Opened by the route /settings/integrations/[agentId]. Security: the key is kept only in this
+ *        component's local state and cleared as soon as it is sent; it never reaches the store, URL or local
+ *        storage.
+ * DEBUG  - Connect stays disabled or errors: connectAgent / testConnection in lib/services/agents.ts validate
+ *          the request (mock) and return the error text shown here.
+ *        - Close must go back to /settings/integrations: close() uses router.replace so history stays short.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useMemo, useState } from "react";

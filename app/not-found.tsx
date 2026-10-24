@@ -1,5 +1,20 @@
+/**
+ * app/not-found.tsx
+ *
+ * WHAT   The 404 page shown for unknown URLs, unknown project ids (/app/projects/<unknown>) and unknown
+ *        settings pages. Offers links back to /app and /demo.
+ * FOR    Next.js not-found convention: pages call notFound() to render this.
+ * DEBUG  - The browser console shows one "404" resource message when this page is the document itself; that is
+ *          expected.
+ *        - In `next dev` only, React also logs a script-tag warning here because the root layout re-renders on
+ *          the client; production is clean.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import Link from "next/link";
 
+/** The 404 page: says the link may be out of date and links to /app and /demo. */
 export default function NotFound() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-6">

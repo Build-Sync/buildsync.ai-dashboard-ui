@@ -1,3 +1,18 @@
+/**
+ * components/workspace/DocumentTabs.tsx
+ *
+ * WHAT   The 28 px document tab strip: the Start tab, one tab per open project (a dot marks unsaved changes,
+ *        the x closes it, middle-click closes it) and + for a new project.
+ * FOR    Switching between projects. Open tabs live in the app store (`tabs`); switching navigates to
+ *        /app/projects/<id> or /demo?project=<id>, which opens that project's workspace.
+ * DEBUG  - The last demo tab cannot be closed: the demo always needs a project.
+ *        - Closing the active tab goes to the next open tab, or to the Start page when none is left.
+ *        - The unsaved dot is wrong: the active tab reads the workspace `dirty` flag, other tabs read the app
+ *          store's `dirty` map.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

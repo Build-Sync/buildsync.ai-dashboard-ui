@@ -1,3 +1,19 @@
+/**
+ * components/workspace/Modals/ProjectModals.tsx
+ *
+ * WHAT   Project-level dialogs: Project Information, Jurisdiction, New project, Versions / History, Export,
+ *        Start free (demo), Import (DWG, DXF, IFC, PDF, image, LandXML, terrain, drone, soil, xref) and Place
+ *        on map.
+ * FOR    Opened through the workspace modal state (Modals/index.tsx). Everything is mock data: imports show a
+ *        canned result, exports only simulate progress, and nothing leaves the browser.
+ * OS     Import accepts a file chosen with the system file picker or dropped on the drop zone; only the file
+ *        name is read.
+ * DEBUG  - Import shows the same result for any file: IMPORT_META holds the canned result per kind.
+ *        - Export finishes instantly or never: ExportModal simulates progress with a timer.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useRef, useState } from "react";
@@ -375,6 +391,7 @@ const IMPORT_META: Record<string, { title: string; accept: string; hint: string;
   xref: { title: "Xref another project", accept: "", hint: "Link another BuildSync project as a reference", result: ["linked: Clinic_Phase1_Antigua", "read-only reference"] },
 };
 
+/** Import / attach dialog for one kind of file (file parsing is mocked). */
 export function ImportModal({ kind }: { kind?: string }) {
   const ws = useWsApi();
   const app = useAppApi();

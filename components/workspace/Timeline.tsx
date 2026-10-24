@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Timeline.tsx
+ *
+ * WHAT   The collapsible timeline dock above the command line: a phase tracker, a Gantt chart by day, week or
+ *        month, a time-window query (1, 3, 6 months, Full or a custom day range) and a time-lapse player.
+ * FOR    The 4D schedule view. The chosen window filters the viewport, the Cost palette, the materials used and
+ *        the crew on site. The schedule is derived from the project by buildSchedule in lib/timeline.ts.
+ * DEBUG  - The time-lapse does not stop: its interval lives in the `tl.playing` effect and is cleared when
+ *          playing ends or the dock unmounts.
+ *        - The Gantt is too wide or narrow: PX_PER_DAY sets the scale per zoom level.
+ *        - A custom range is ignored: applyCustom accepts only finite numbers with `to` greater than `from`.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,6 +39,7 @@ const PX_PER_DAY = { day: 10, week: 3.4, month: 1.25 } as const;
 const TRADE_COLORS = ["#4c8dff", "#3ecf8e", "#f0a940", "#8b6cf0", "#2cc4d6", "#e86ab5", "#ef5b5b", "#9ab04a"];
 const tradeColor = (t: string) => TRADE_COLORS[hash(t) % TRADE_COLORS.length];
 
+/** The timeline dock (phases, Gantt, window query, time-lapse). */
 export function Timeline() {
   const ws = useWsApi();
   const project = useWs((s) => s.project);

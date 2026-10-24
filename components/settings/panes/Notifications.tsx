@@ -1,3 +1,16 @@
+/**
+ * components/settings/panes/Notifications.tsx
+ *
+ * WHAT   Settings → Notifications: a table of events (NOTIF_EVENTS) by channel, in-app and e-mail. The weekly
+ *        digest is e-mail only.
+ * FOR    The `settings.notifications` values. In-app notifications appear as toasts and in the command-line
+ *        log; no e-mail is actually sent in this mock build.
+ * DEBUG  - Add a new event: add it to NOTIF_EVENTS and the NotifEvent type in lib/settings.ts; the table
+ *          renders from that list.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Checkbox } from "@/components/ui/controls";

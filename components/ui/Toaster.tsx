@@ -1,3 +1,19 @@
+/**
+ * components/ui/Toaster.tsx
+ *
+ * WHAT   Bottom-centre toast notifications ("Kimi connected", "Settings applied"). Reads the toast list from
+ *        the app store and shows each for 3 seconds (4.2 s for warnings), or until dismissed.
+ * FOR    Quick confirmations from anywhere in the app: call app.getState().toast(text, tone). Mounted once in
+ *        app/layout.tsx.
+ * DEBUG  - A toast never appears: nothing called toast(), or the store kept more than the last four (older ones
+ *          are dropped).
+ *        - A toast stays forever: the auto-dismiss timer lives in ToastItem's effect and is reset when the
+ *          toast id or tone changes.
+ *        - Hidden behind something: the container uses z-index 120, above modals (60-90) and tooltips (100).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect } from "react";
@@ -35,6 +51,7 @@ function ToastItem({ t }: { t: Toast }) {
   );
 }
 
+/** The live region that stacks the current toasts above the status bar. */
 export function Toaster() {
   const toasts = useApp((s) => s.toasts);
   return (

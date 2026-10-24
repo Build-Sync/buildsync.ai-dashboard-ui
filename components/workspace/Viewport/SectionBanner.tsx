@@ -1,3 +1,14 @@
+/**
+ * components/workspace/Viewport/SectionBanner.tsx
+ *
+ * WHAT   The pill at the top of the canvas while a section cut is on: "SECTION CUT ACTIVE · plane Y = 12.0 ft",
+ *        a slider that moves the cutting plane and a close button.
+ * FOR    Controlling the section plane (workspace `sectionY` and `section`). Mounted by ModelViewport only
+ *        while the section is active.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

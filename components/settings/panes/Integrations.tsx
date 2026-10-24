@@ -1,3 +1,21 @@
+/**
+ * components/settings/panes/Integrations.tsx
+ *
+ * WHAT   Settings → Integrations / Connectors: cards for each AI agent (Connect, Manage, Disconnect), a table
+ *        routing task kinds to agents, the MCP-server switch with its copyable URL, and a "notify me" list of
+ *        future integrations. When the URL has an agent id (/settings/integrations/<agent>) it also shows the
+ *        ConnectDialog.
+ * FOR    `agents` and `activeAgentId` in the app store, `settings.routing` and `settings.mcp`. Connecting and
+ *        disconnecting go through lib/services/agents.ts (mock).
+ * DEBUG  - The Connect dialog does not open: it is driven by the URL segment; open() uses router.replace so one
+ *          Close suffices.
+ *        - MCP URL shows the demo project: it uses the last project from the bs_last_project cookie, else the
+ *          Miami residence.
+ *        - A route says "Falls back to active agent": the chosen agent is not connected.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
@@ -28,6 +46,7 @@ function lastProjectSlug(): string {
   return "residence-2br-miami";
 }
 
+/** The Settings → Integrations pane; `agentId` opens that agent's Connect / Manage dialog. */
 export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
   const router = useRouter();
   const app = useAppApi();

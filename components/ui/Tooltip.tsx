@@ -1,3 +1,21 @@
+/**
+ * components/ui/Tooltip.tsx
+ *
+ * WHAT   The tooltip system. tip(title, description, command) returns data attributes that components spread
+ *        onto a button; one delegated pointer listener in <TooltipLayer/> shows a fixed-position bubble 250 ms
+ *        after hovering (60 ms when moving between neighbouring buttons) in the format Title / description /
+ *        "Command: NAME".
+ * FOR    Every ribbon button, toolbar icon and status-bar item. Settings → Display → Tooltips chooses off,
+ *        basic (no command line) or extended. Mounted once in app/layout.tsx.
+ * DEBUG  - No tooltip on an element: it needs a data-tip attribute (spread {...tip("Title", "Description",
+ *          "COMMAND")}).
+ *        - Bubble clipped: it is position:fixed and flips above the target near the bottom edge; check for an
+ *          ancestor with a CSS transform.
+ *        - Touch input never shows tooltips by design (pointerType "touch" is ignored).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -7,12 +25,17 @@ import { useApp } from "@/lib/store/app-provider";
  * One delegated listener serves every button. The bubble is position:fixed so panels
  * and scroll containers can never clip it. */
 
+/** The data attributes that tip() returns, to spread onto an element. */
 export interface TipProps {
   "data-tip": string;
   "data-tip-desc"?: string;
   "data-tip-cmd"?: string;
 }
 
+/**
+ * Data attributes for a tooltip: spread them on an element, e.g. <button {...tip("Wall", "Draw a wall",
+ * "WALL")}>.
+ */
 export function tip(title: string, desc?: string, cmd?: string): TipProps {
   const p: TipProps = { "data-tip": title };
   if (desc) p["data-tip-desc"] = desc;
@@ -31,6 +54,7 @@ interface Shown {
 
 const DELAY = 250;
 
+/** Listens for hover over any [data-tip] element and shows its tooltip bubble. */
 export function TooltipLayer() {
   const mode = useApp((s) => s.settings.display.tooltips);
   const [shown, setShown] = useState<Shown | null>(null);

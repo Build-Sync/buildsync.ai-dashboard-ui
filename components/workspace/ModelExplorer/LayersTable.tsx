@@ -1,3 +1,16 @@
+/**
+ * components/workspace/ModelExplorer/LayersTable.tsx
+ *
+ * WHAT   The Layers tab: for each layer an eye (visible in the viewport), the name, a colour swatch and a lock.
+ * FOR    Toggles `project.layers[].visible` and `.locked` in the workspace store (toggleLayer,
+ *        toggleLayerLock); the ribbon's ELEC and PLUMB buttons toggle the same layers.
+ * DEBUG  - A layer is toggled but nothing changes in the viewport: element layer ids in lib/scene must match
+ *          the layer ids made by makeLayers() in lib/mock-data.ts.
+ *        - A locked layer's elements cannot be selected or edited; ModelViewport shows an "is locked" toast.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

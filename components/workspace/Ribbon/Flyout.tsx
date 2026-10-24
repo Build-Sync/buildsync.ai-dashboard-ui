@@ -1,3 +1,18 @@
+/**
+ * components/workspace/Ribbon/Flyout.tsx
+ *
+ * WHAT   The floating panel that shows a collapsed ribbon panel in full. It is a portal to document.body with
+ *        position:fixed, clamped to the window, and it closes on an outside press, Esc, window blur or resize.
+ * FOR    Ribbon collapse (CollapsedPanel in RibbonPanels.tsx). Being in a portal, the ribbon's overflow cannot
+ *        clip it.
+ * DEBUG  - The flyout opens partly off-screen: its position is clamped in a layout effect after measuring its
+ *          width.
+ *        - It closes the moment it opens: presses on a [data-ribbon-collapsed] trigger are ignored by the
+ *          outside-press check, so the trigger's own click can toggle it.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";

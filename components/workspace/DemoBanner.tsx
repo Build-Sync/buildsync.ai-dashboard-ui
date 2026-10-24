@@ -1,3 +1,14 @@
+/**
+ * components/workspace/DemoBanner.tsx
+ *
+ * WHAT   The accent-coloured strip at the top of /demo: "You're in the demo - Start free to save", with a
+ *        button that opens the Start-free dialog.
+ * FOR    Tells visitors that edits are not saved. It is mounted only in demo mode (Workspace.tsx), which also
+ *        sets --h-banner so the rest of the layout moves down.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

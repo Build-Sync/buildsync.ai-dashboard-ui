@@ -1,3 +1,15 @@
+/**
+ * components/workspace/Ribbon/Buttons.tsx
+ *
+ * WHAT   The two ribbon button shapes: LargeButton (28 px icon with the label underneath) and SmallButton (icon
+ *        and label inline, stacked three to a column). Active toggles get an accent fill; every button has a
+ *        tooltip with title, description and command.
+ * FOR    RibbonPanels.tsx. Their sizes are mirrored by the estimate constants in fit.ts (LARGE_COL, SMALL_MIN);
+ *        if you change a button's width, update them too.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";
@@ -15,6 +27,7 @@ interface BtnProps {
   onRun: (command: string) => void;
 }
 
+/** Large ribbon button: big icon, label below. */
 export function LargeButton({ item, active, onRun }: BtnProps) {
   return (
     <button
@@ -34,6 +47,7 @@ export function LargeButton({ item, active, onRun }: BtnProps) {
   );
 }
 
+/** Small ribbon button: icon and label on one line. */
 export function SmallButton({ item, active, onRun }: BtnProps) {
   return (
     <button

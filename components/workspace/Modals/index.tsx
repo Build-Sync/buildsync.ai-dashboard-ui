@@ -1,3 +1,19 @@
+/**
+ * components/workspace/Modals/index.tsx
+ *
+ * WHAT   Renders whichever workspace dialog is open: it reads the workspace `modal` ({ id, data }) and shows
+ *        the matching dialog (project info, jurisdiction, new project, versions, export, start free, import,
+ *        geolocate, PE sign-off, approvals, schedule, quantity take-off, Prompt to Plan, share, invite).
+ * FOR    Any code opens a dialog with ws.getState().openModal(id, data) and closes it with closeModal(). The
+ *        Settings window is not here: it is a route (components/settings).
+ * DEBUG  - A dialog does not open: its id must have a case in the switch below and be spelt the same where
+ *          openModal is called.
+ *        - Dialog data is ignored: each case casts modal.data fields (tab, format, kind, prompt) to the
+ *          dialog's props.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useWs } from "@/lib/store/workspace-provider";

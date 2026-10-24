@@ -1,8 +1,28 @@
+/**
+ * lib/timeline.ts
+ *
+ * WHAT   Turns a project's schedule into day-based data: buildSchedule (phases and tasks with day offsets, plus
+ *        a costScale that makes the task costs add up to the project's hard cost), windowFor / PRESET_DAYS (1,
+ *        3, 6 months, full or custom window), phaseStateAt (which scene phases are built, active or still to
+ *        come on a day) and windowMetrics (spend, materials, crew and active tasks in a window).
+ * FOR    The Timeline dock, the Cost palette and the viewport (to show only what is built by the end of the
+ *        chosen window).
+ * DEBUG  - Costs do not add up: task costs are multiplied by schedule.costScale (set in buildSchedule, applied
+ *          in windowMetrics) so they sum to project.cost.hard.
+ *        - A phase never shows as built: the schedule phase needs a `key` that exists in PHASE_ORDER
+ *          (lib/scene/types.ts).
+ *        - Dates are computed in UTC and formatted with a fixed en-US locale, so they do not shift with the
+ *          user's time zone.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { PHASE_ORDER, type PhaseKey } from "./scene/types";
 import type { PhaseState } from "./scene/render";
 import type { Phase, Project, TimelinePreset, TimelineWindow } from "./types";
 import { addDays, dayOffset, clamp } from "./utils";
 
+/** A task with start and end as day offsets. */
 export interface DayTask {
   name: string;
   trade: string;
@@ -13,6 +33,7 @@ export interface DayTask {
   materials: { name: string; qty: number; unit: string }[];
 }
 
+/** A phase with day offsets and its tasks. */
 export interface DayPhase {
   name: string;
   key?: PhaseKey;
@@ -21,6 +42,7 @@ export interface DayPhase {
   tasks: DayTask[];
 }
 
+/** The whole schedule in days. */
 export interface Schedule {
   phases: DayPhase[];
   total: number;
@@ -28,6 +50,7 @@ export interface Schedule {
   costScale: number;
 }
 
+/** Convert a project's dated schedule into day offsets, with the cost scale that matches the hard cost. */
 export function buildSchedule(project: Project): Schedule {
   const phases: DayPhase[] = project.schedule.map((p: Phase) => ({
     name: p.name,
@@ -49,8 +72,10 @@ export function buildSchedule(project: Project): Schedule {
   return { phases, total, costScale: sum > 0 ? project.cost.hard / sum : 1 };
 }
 
+/** Length in days of the 1, 3 and 6 month presets. */
 export const PRESET_DAYS: Record<Exclude<TimelinePreset, "full" | "custom">, number> = { "1mo": 30, "3mo": 91, "6mo": 182 };
 
+/** Build a time window from a preset or a custom day range. */
 export function windowFor(preset: TimelinePreset, total: number, custom?: { from: number; to: number }): TimelineWindow {
   if (preset === "custom" && custom) {
     const from = clamp(Math.round(custom.from), 0, total);
@@ -61,6 +86,7 @@ export function windowFor(preset: TimelinePreset, total: number, custom?: { from
   return { preset, from: 0, to: Math.min(PRESET_DAYS[preset], total) };
 }
 
+/** Calendar label ("Jan 5") for a day offset. */
 export function dayLabel(project: Project, day: number): string {
   const d = addDays(project.startDate, day);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -88,6 +114,7 @@ export function phaseStateAt(schedule: Schedule, day: number): Partial<Record<Ph
   return out;
 }
 
+/** Spend, materials, crew and active tasks for a time window. */
 export interface WindowMetrics {
   spent: number;
   spentPct: number;
@@ -99,6 +126,7 @@ export interface WindowMetrics {
   activeTasks: string[];
 }
 
+/** Compute the metrics for a time window. */
 export function windowMetrics(schedule: Schedule, project: Project, w: TimelineWindow): WindowMetrics {
   const progress = (t: DayTask, d: number) => clamp((d - t.start) / Math.max(1, t.end - t.start), 0, 1);
   let spent = 0;

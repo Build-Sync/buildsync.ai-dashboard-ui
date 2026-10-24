@@ -1,9 +1,28 @@
+/**
+ * components/ui/controls.tsx
+ *
+ * WHAT   The small reusable form and display controls: Switch, Select, Segmented (radio-style button group),
+ *        Checkbox, Slider, Pill (status badge), Section (collapsible block), KV (label/value row), EmptyState,
+ *        Spinner, and the AdvisoryNote footer.
+ * FOR    Settings panes, palettes and dialogs, so that every screen looks and behaves the same and is keyboard-
+ *        and screen-reader-accessible (roles, aria-labels).
+ * DEBUG  - A Switch or Segmented value does not update: they are controlled; the parent must store onChange's
+ *          value.
+ *        - Select with number values: option values are stringified for the DOM and mapped back, see Select's
+ *          onChange.
+ *        - The advisory wording in AdvisoryNote comes from spec section 6 and must stay on every results
+ *          palette.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
+/** On/off toggle (role=switch). `locked` shows a padlock for values fixed by policy. */
 export function Switch({
   checked,
   onChange,
@@ -42,12 +61,14 @@ export function Switch({
   );
 }
 
+/** One choice of a Select or Segmented control. */
 export interface Option<T extends string | number> {
   value: T;
   label: string;
   disabled?: boolean;
 }
 
+/** Native dropdown with typed values. */
 export function Select<T extends string | number>({
   value,
   onChange,
@@ -83,6 +104,7 @@ export function Select<T extends string | number>({
   );
 }
 
+/** A group of mutually exclusive buttons (radio group), e.g. Day / Week / Month. */
 export function Segmented<T extends string | number>({
   value,
   onChange,
@@ -122,6 +144,7 @@ export function Segmented<T extends string | number>({
   );
 }
 
+/** Labelled checkbox tinted with the accent colour. */
 export function Checkbox({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   const id = useId();
   return (
@@ -132,6 +155,7 @@ export function Checkbox({ checked, onChange, label, disabled }: { checked: bool
   );
 }
 
+/** Range input with a numeric read-out and optional unit suffix. */
 export function Slider({ value, min, max, step = 1, onChange, label, suffix }: { value: number; min: number; max: number; step?: number; onChange: (v: number) => void; label: string; suffix?: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -144,6 +168,7 @@ export function Slider({ value, min, max, step = 1, onChange, label, suffix }: {
   );
 }
 
+/** Small coloured status badge (ok, warn, bad, info, accent, neutral). */
 export function Pill({ tone = "neutral", children, className }: { tone?: "ok" | "warn" | "bad" | "info" | "neutral" | "accent"; children: ReactNode; className?: string }) {
   const tones: Record<string, string> = {
     ok: "bg-ok/15 text-ok",
@@ -173,6 +198,7 @@ export function Section({ title, defaultOpen = true, children, right }: { title:
   );
 }
 
+/** A label on the left and a value on the right, used in property lists. */
 export function KV({ k, v, mono = true }: { k: string; v: ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-[0.1875rem] text-[0.75rem]">
@@ -184,6 +210,7 @@ export function KV({ k, v, mono = true }: { k: string; v: ReactNode; mono?: bool
   );
 }
 
+/** Centred icon, title and hint for a panel that has nothing to show yet. */
 export function EmptyState({ icon, title, hint, action }: { icon: Parameters<typeof Icon>[0]["name"]; title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
@@ -197,6 +224,7 @@ export function EmptyState({ icon, title, hint, action }: { icon: Parameters<typ
   );
 }
 
+/** Rotating loader icon. */
 export function Spinner({ size = 14 }: { size?: number }) {
   return (
     <span className="inline-block animate-spin text-t2" style={{ width: size, height: size }} aria-label="Loading">

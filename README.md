@@ -7,19 +7,86 @@ service functions (see [What is mocked](#what-is-mocked)).
 
 Built from `buildsync-ai-overview.md` (the product spec). Section numbers like §10.4 below refer to it.
 
+## Owner and licence
+
+Copyright (c) 2026 **Giordano Bertin-Maurice**. All rights reserved. This is his intellectual property: author and
+copyright notices are in the header of every source file, in `package.json`, in the page metadata and in
+[`LICENSE`](LICENSE), which grants no licence to anyone without his written permission. Third-party packages and the
+IBM Plex / Inter typefaces keep their own licences.
+
 ## Run it
 
-Node 20.9+.
+Node 20.9 or newer. The commands are the same in macOS Terminal, Windows PowerShell or Command Prompt, and Linux shells.
 
 ```bash
 npm install
 npm run dev          # http://localhost:3000
-npm run build && npm start
-npm run typecheck && npm run lint
+npm run build        # production build
+npm start            # serve the production build
+npm run typecheck    # TypeScript
+npm run lint         # ESLint
+npm test             # unit tests (milliseconds, no browser)
+npm run e2e          # browser tests, see "Tests" below
 ```
 
 Stack: Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS v4, Zustand, lucide-react,
 IBM Plex Sans / Mono and Inter (via Fontsource). No backend, no environment variables.
+
+## macOS, Windows and Linux
+
+The UI follows each operating system's conventions instead of assuming one. The full list is in
+[`lib/platform.ts`](lib/platform.ts) and [`lib/shortcuts.ts`](lib/shortcuts.ts); the browser tests in
+[`e2e/platform.mjs`](e2e/platform.mjs) run the real app as each OS.
+
+**Keyboard.** Shortcuts are stored with "Ctrl" meaning the *primary* modifier, shown as ⌘ on a Mac and Ctrl elsewhere, so a
+shortcuts file exported from Settings → Shortcuts works on every OS. Labels in menus, the search box and the Shortcuts page
+are drawn per OS.
+
+| Action | macOS | Windows / Linux |
+|---|---|---|
+| Search commands | ⌘K | Ctrl+K |
+| Undo / Redo | ⌘Z / ⇧⌘Z | Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z also works) |
+| Save / Save As | ⌘S / ⇧⌘S | Ctrl+S / Ctrl+Shift+S |
+| New project | ⌘N, or ⌥⌘N when the browser keeps ⌘N | Ctrl+N, or Ctrl+Alt+N when the browser keeps Ctrl+N |
+| Delete selection | the delete key (⌫) or fn⌫ | Del |
+| Settings | ⌘, | Ctrl+, |
+| Grid / Snap / Ortho / Polar / Object snap | F7 / F9 / F8 / F10 / F3 (hold fn on most Mac keyboards) | F7 / F9 / F8 / F10 / F3 |
+
+Option+letter shortcuts and non-Latin keyboard layouts match by physical key, key presses that confirm an input-method
+(IME) candidate never run commands, and the command line turns off auto-correct, auto-capitalisation and smart quotes.
+
+**Mouse, trackpad and touch.**
+
+| | |
+|---|---|
+| Orbit (3D) / pan (2D) | drag |
+| Pan in 3D without a middle button | hold **Space** and drag, or use the hand tool; middle-drag also works |
+| Zoom | mouse wheel, trackpad pinch (Safari included), or the zoom tool |
+| Scroll behaviour | Settings → Display → *Scroll gesture*: Auto (wheel zooms, trackpad pans), Scroll zooms, or Scroll pans |
+| Select / add to selection | click / Shift+click or ⌘+click (Mac) or Ctrl+click (Windows, Linux) |
+| Selection window | Shift-, ⌘- (Mac) or Ctrl-drag (Windows, Linux) |
+| Context menu | right-click, two-finger click, or ⌃+click on a Mac |
+| Touch screens (Windows tablets and 2-in-1s, iPad) | one finger orbits or pans; two fingers pinch to zoom and pan |
+
+**Appearance.** Theme can be Dark, Light, High contrast or **Match system**, which follows macOS Appearance, Windows
+"app mode", GNOME/KDE dark mode and the OS "increase contrast" switch, live. Under Windows Contrast themes (forced
+colours) the interface adopts the system palette and the drawing keeps its own colours. UI scale (90–125 %) covers
+high-DPI and 150 %-scaled Windows displays. The typefaces are bundled, so text looks the same everywhere; each OS's
+system font is the fallback. Scrollbars reserve their space on Windows and Linux so panels do not jump sideways.
+
+**Downloads.** CSV tables (door / window schedule, quantity take-off) are saved as UTF-8 with a byte-order mark and CRLF line
+ends, so Excel on Windows shows symbols such as × and ″ correctly, and macOS Numbers and Excel read them too. Every download
+goes through `lib/save-file.ts`, which keeps the link in the page until the browser has started the download (Safari cancels
+it otherwise) and clicks it from the document (Firefox needs that).
+
+**Install it as an app.** The site ships a web app manifest and icons, so it can run in its own window with no browser
+tabs: Chrome or Edge (address-bar *Install* button) on Windows, macOS and Linux, and Safari 17+ on macOS (*File → Add to
+Dock*). Where the browser supports manifest shortcuts (the Windows jump list, for example) it offers the demo workspace and Settings. Browsers keep a few shortcuts for
+themselves (Ctrl/⌘+N, +T, +W); use the alternates in the table above or the command line.
+
+**Browsers.** Chrome and Edge 111+, Safari 16.4+, Firefox 128+ (the floor of Tailwind CSS v4). The suites ran on Chromium
+with each OS emulated. I could not run Safari's or Firefox's own engines or real Mac / Windows hardware where this was
+built: run `npm run e2e -- --browser=webkit` (Safari's engine) and `--browser=firefox` on your machines.
 
 ## Routes
 
@@ -32,6 +99,7 @@ IBM Plex Sans / Mono and Inter (via Fontsource). No backend, no environment vari
 | `/settings` | Redirects to `/settings/general`. |
 | `/settings/{general,units,grid-snap,display,rendering,shortcuts,ai,integrations,notifications,permissions,account}` | The eleven settings pages. |
 | `/settings/integrations/[agentId]` | The Connect / Manage dialog for an agent (`claude`, `chatgpt`, `kimi`, `gemini`, `local`, `custom`) over the Connectors page. |
+| `/manifest.webmanifest` | The web app manifest (name, start page, icons, shortcuts). |
 
 ### Workspace state lives in the URL
 
@@ -71,26 +139,35 @@ URL directly renders the same screens as a normal page.
 * **Timeline dock (§10.9)**: phase tracker, Gantt (day / week / month), `1 mo` `3 mo` `6 mo` `Full` or custom windows that
   drive the viewport build state, the Cost palette, materials and crew, and a timelapse. It sits above the command line,
   collapsed by default; expand it with the chevron.
-* **Command line (§10.10)**: 198 commands with aliases and default hotkeys (`F3` OSNAP, `F7` GRID, `F8` ORTHO,
-  `F9` SNAP, `Ctrl+K` search, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+/` shortcuts…). Known commands run locally; anything else goes to the
+* **Command line (§10.10)**: 198 commands with aliases and default hotkeys. Known commands run locally; anything else goes to the
   active agent, which can only **propose** an edit: a preview diff with Accept / Reject, never a silent change.
 * **Agents (§11.8)**: connect / manage / disconnect, task routing table, MCP endpoint, per-agent permissions.
 * **Review and PE workflow**: Send to PE, audit trail, seal-pending sheets. Every AI output is labelled advisory and the
   banner cannot be turned off until a PE licence is verified.
 
-## Code map
+## Code map and how the code is documented
 
 ```
-app/                     routes (see above), globals.css (design tokens), layout
+app/                     routes (see above), globals.css (design tokens), layout, manifest, icons
 components/workspace/    Workspace shell, AppBar, Ribbon/, ModelExplorer/, Viewport/, Palettes/, CommandLine/, Timeline, Modals/
 components/settings/     SettingsFrame, route-parts, panes/ (one per page + ConnectDialog)
-components/ui/           Menu, Modal, Tooltip, Toaster, controls
+components/ui/           Menu, Modal, Tooltip, Toaster, Kbd, controls
 lib/commands.ts          the command registry; ribbon, hotkeys, command line, context menu and search all resolve through it
+lib/platform.ts, shortcuts.ts, input.ts, theme.ts   OS detection, shortcut matching/labels, wheel/trackpad rules, theme resolution
 lib/scene/               scene builders, camera, painter's-algorithm renderer, sun
 lib/services/            the mocked back end (projects, agents, ai, analysis)
 lib/store/               app store (settings, agents, history…) and per-project workspace store
-e2e/                     Playwright suites (below)
+e2e/                     Playwright browser suites (below)
+scripts/                 make-icons.mjs: renders the PNG icons from app/icon.svg
 ```
+
+**Every file starts with a header** that says what the file does (`WHAT`), what it is for in the app (`FOR`), and where to
+look when it misbehaves (`DEBUG`), followed by the author and copyright lines. Read the header first when tracking down a
+fault; it names the neighbouring files and the invariants that must hold. Exported functions and components carry a
+one-line description too. Config files carry the same notice in their own comment style (`#` in `.gitignore`, a `//` block
+in `tsconfig.json`, an XML comment in `app/icon.svg`, a `"//"` note in `package.json`). `package-lock.json` is generated by
+npm and cannot hold comments. In `AGENTS.md` the part between the Next.js markers is written by `next dev`; the owner's
+rules (authorship, headers, cross-platform) are below it.
 
 Design tokens (§12) are CSS variables in `app/globals.css`: dark by default, light and high-contrast via
 `data-theme`. Sizes are `rem`, so the UI-scale setting (90–125 %) scales the whole chrome. `public/theme-boot.js` is a
@@ -116,29 +193,42 @@ Numbers on screen (costs, stress, code citations) are illustrative. Nothing here
 * Next.js 16 matches intercepted routes strictly, so the canonical settings route is one catch-all
   (`settings/[[...slug]]`) rather than a folder per page. URLs are the spec's.
 * `cacheComponents` is off: this is an interactive mock-data app with request-time cookies and client clocks.
-* Added: `doc=start` and (demo only) `project` query parameters; the ribbon panel collapse above.
+* Added: `doc=start` and (demo only) `project` query parameters; the ribbon panel collapse; the per-OS shortcut,
+  gesture, theme ("Match system") and install-as-app support described above.
 * The reference PNGs were not available, so layout follows the spec's text and design tokens.
 
-## Browser tests
+## Tests
 
-`e2e/` holds two Playwright suites that drive a real browser against a running app: **routing** (redirects, deep links,
-modal-over-workspace and page-mode settings, Close / back behaviour, 404s) and **workspace** (every palette, every ribbon
-button including those inside collapsed panels, command line and AI proposals, hotkeys, context menu, document tabs,
-timeline, sheets, settings draft / Apply / persistence, Connect and Disconnect, blocked-storage fallback).
+* **Unit tests** (`npm test`, about a second): the pure logic that differs per OS: platform detection, shortcut matching and
+  labels, wheel / trackpad interpretation, theme resolution, CSV output (`lib/*.test.ts`).
+* **Browser tests** (`npm run e2e`) drive a real browser against a running app, in three suites that can also be run alone
+  (`npm run e2e:routing`, `e2e:workspace`, `e2e:platform`):
+  **routing** (redirects, deep links, modal-over-workspace and page-mode settings, Close / back, 404s),
+  **workspace** (every palette, every ribbon button including those inside collapsed panels, command line and AI proposals,
+  hotkeys, context menu, document tabs, timeline, sheets, settings draft / Apply / persistence, Connect and Disconnect,
+  Esc handling, blocked-storage fallback) and
+  **platform** (the app run as macOS, Windows and Linux: labels, keys, selection modifiers, Space-pan, wheel, pinch,
+  touch, Match system, forced colours, installability, IME, downloads).
 
 ```bash
-npm run build && npm start &              # or: npm run dev
-npx playwright-core install chromium      # or set CHROMIUM_PATH to an installed Chrome/Chromium
-BASE=http://localhost:3000 npm run e2e
+npm run build && npm start               # or: npm run dev  (leave it running; open a second terminal)
+npx playwright-core install chromium     # once; or pass --chromium=PATH to an installed Chrome / Chromium
+npm run e2e -- --base=http://localhost:3000
 ```
 
-`node e2e/workspace.mjs "ribbon,timeline"` runs only checks whose names contain those fragments; screenshots go to
-`e2e/.shots/`. A check also fails if the page logs a console error while it runs.
+Options work the same in every shell: `--base=URL`, `--chromium=PATH`, `--browser=chromium|webkit|firefox`,
+`--out=DIR`, and a name filter such as `npm run e2e:workspace -- "ribbon,timeline"`. Screenshots go to `e2e/.shots/`.
+A check also fails if the page logs a console error while it runs.
 
 ## Known issues
 
 * Under `next dev` only, React logs "Encountered a script tag while rendering React component" on 404 pages: the not-found
   page re-renders the root layout on the client, and that layout contains the blocking theme script. It does not occur on
   real pages or in a production build.
+* Browsers do not let a page override Ctrl/⌘+N, +T and +W, and macOS keeps F3, F4 and F11; the alternates above cover them.
 * The viewport is a painter's-algorithm SVG renderer tuned for the two sample buildings (69 and 115 elements). It is
   not a general-purpose CAD renderer; a production build would put WebGL behind the same scene and camera interfaces.
+
+---
+
+Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.

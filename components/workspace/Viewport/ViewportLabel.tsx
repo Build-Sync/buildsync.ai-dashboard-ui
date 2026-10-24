@@ -1,3 +1,19 @@
+/**
+ * components/workspace/Viewport/ViewportLabel.tsx
+ *
+ * WHAT   The label in the top-left of the canvas, [−][view name][visual style], each part a menu: the viewport
+ *        menu (show ViewCube, navigation bar, UCS icon and rulers; zoom extents; reset view), named views, and
+ *        visual styles (Wireframe, Shaded, Realistic, X-Ray).
+ * FOR    Changing the view and style without the ribbon. The visual style set here is a per-project override
+ *        (workspace store); the default comes from Settings → Rendering. Menu toggles write the display
+ *        settings directly.
+ * DEBUG  - The style label differs from Settings: a per-project override is in force (useEffectiveStyle).
+ *        - A named view is not ticked: viewName comes from describeView(camera) and must equal an entry of
+ *          VIEW_LIST.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";
@@ -17,6 +33,7 @@ const VIEW_LIST = ["SW Isometric", "SE Isometric", "NE Isometric", "NW Isometric
 
 type Which = "vp" | "view" | "style";
 
+/** The bracketed viewport label with its three menus. */
 export function ViewportLabel() {
   const ws = useWsApi();
   const app = useAppApi();

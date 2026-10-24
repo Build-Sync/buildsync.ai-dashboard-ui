@@ -1,3 +1,26 @@
+/**
+ * components/workspace/Workspace.tsx
+ *
+ * WHAT   The main CAD screen. <Workspace> creates the per-project workspace store and renders the shell: demo
+ *        banner, app bar, ribbon tabs and panels, document tabs, then either the Start page or the model
+ *        explorer + viewport + palette dock, then the timeline, command line, status bar, context menu and
+ *        modals.
+ * FOR    app/app/projects/[projectId] and app/demo render it with the project, the mode ("app" or "demo") and
+ *        the URL query. The shell also wires four app-wide behaviours: the keyboard shortcuts (useHotkeys), the
+ *        bs_last_project cookie for /app, the browser full-screen state, the Grid & Snap settings onto the
+ *        status-bar toggles, and auto-save (app mode only; the demo never saves).
+ * OS     min-width 64rem and h-dvh give a stable desktop layout; keyboard shortcuts are handled for the active
+ *        workspace only (pathname === basePath), so a Settings modal opened over it does not trigger drawing
+ *        shortcuts.
+ * DEBUG  - Shortcuts dead: useHotkeys(active) only listens while this workspace's route is the current one.
+ *        - Status-bar toggle snaps back: the Grid & Snap effect re-applies settings.gridSnap whenever it
+ *          changes.
+ *        - Layout shifted in /demo: the 1.5rem demo banner sets --h-banner on the root element.
+ *        - Auto-save: runs only when `dirty`, in app mode, after autosaveMinutes (Settings → General).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -22,6 +45,7 @@ import { Timeline } from "./Timeline";
 import { ViewportArea } from "./Viewport";
 import { useHotkeys } from "./useHotkeys";
 
+/** Props of <Workspace>: the project, "app" or "demo" mode, the parsed URL query and the route's base path. */
 export interface WorkspaceProps {
   project: Project;
   mode: "app" | "demo";

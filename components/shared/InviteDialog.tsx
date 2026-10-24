@@ -1,3 +1,18 @@
+/**
+ * components/shared/InviteDialog.tsx
+ *
+ * WHAT   The "Invite a member" dialog: name, e-mail and role. A PE Reviewer must also give a licence number and
+ *        jurisdiction so sign-offs can be verified (spec section 11.10). Validates, adds the member to the app
+ *        store, toasts and logs.
+ * FOR    Opened from Settings → Permissions, the workspace Share dialog and the Collaborate → Share ribbon
+ *        panel. ROLE_LABEL and ROLE_OPTIONS are shared with the members table.
+ * DEBUG  - Send does nothing: validation failed (empty name, bad e-mail, or PE licence under 4 characters);
+ *          errors show after the first attempt.
+ *        - No e-mail is actually sent: the invitation is mock data; see addMember in lib/store/app-store.ts.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";
@@ -6,6 +21,7 @@ import { Select } from "@/components/ui/controls";
 import { useAppApi } from "@/lib/store/app-provider";
 import type { Role } from "@/lib/types";
 
+/** Display name of each member role. */
 export const ROLE_LABEL: Record<Role, string> = {
   owner: "Owner",
   engineer: "Engineer",
@@ -13,6 +29,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   contributor: "Contributor",
   viewer: "Viewer",
 };
+/** Roles that can be chosen when inviting (everything except Owner). */
 export const ROLE_OPTIONS = (["engineer", "pe-reviewer", "contributor", "viewer"] as Role[]).map((r) => ({ value: r, label: ROLE_LABEL[r] }));
 
 /** Invite a member. PE Reviewer requires a license number + jurisdiction (spec §11.10). */

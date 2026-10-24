@@ -1,3 +1,20 @@
+/**
+ * lib/search.ts
+ *
+ * WHAT   The app-bar search: one index built from the ribbon buttons, all commands, the Settings pages and
+ *        individual settings, plus the elements of the open scene, with fuzzy scoring (lib/utils.ts fuzzy) and
+ *        the action to run for each result.
+ * FOR    SearchBox.tsx calls searchAll(query, scene). Choosing a result runs a command, opens a settings page
+ *        or zooms to an element.
+ * DEBUG  - A command is missing from the results: it must be in the ribbon (ribbon.config.ts) or COMMANDS
+ *          (lib/commands.ts).
+ *        - A setting is missing: add it to SETTINGS_ITEMS in lib/settings-pages.ts.
+ *        - Elements only match from 2 characters; topography is excluded.
+ *        - The static part of the index is built once and cached in `cached`.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { IconKey } from "@/components/icons";
 import { RIBBON } from "@/components/workspace/Ribbon/ribbon.config";
 import { COMMANDS, runCommand, type CommandCtx } from "./commands";
@@ -7,6 +24,7 @@ import { fuzzy } from "./utils";
 
 /* App-bar search: fuzzy over every command, settings page/item and model element (spec §10.1). */
 
+/** One search hit: what it is, how it scores and what to run when chosen. */
 export interface SearchResult {
   id: string;
   kind: "command" | "setting" | "element";
@@ -67,6 +85,7 @@ function staticIndex(): Entry[] {
   return out;
 }
 
+/** Search commands, settings and scene elements; best matches first, at most `limit`. */
 export function searchAll(query: string, scene: Scene | null, limit = 9): SearchResult[] {
   const q = query.trim();
   const entries = staticIndex();
@@ -97,4 +116,5 @@ export function searchAll(query: string, scene: Scene | null, limit = 9): Search
   return scored.slice(0, limit);
 }
 
+/** Example queries shown when the box is empty. */
 export const SEARCH_SUGGESTIONS = ["STRESS", "Section cut", "2D plan", "Compliance", "Connectors", "Units", "Theme"];

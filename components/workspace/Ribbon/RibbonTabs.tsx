@@ -1,3 +1,14 @@
+/**
+ * components/workspace/Ribbon/RibbonTabs.tsx
+ *
+ * WHAT   The ribbon tab strip (28 px) and the always-visible "Advisory only · PE sign-off required" pill on the
+ *        right, which opens the PE sign-off dialog.
+ * FOR    Choosing which ribbon tab is shown (workspace `tab`). The advisory pill must stay visible on every
+ *        screen; its tooltip wording depends on Settings → General → Advisory banner.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

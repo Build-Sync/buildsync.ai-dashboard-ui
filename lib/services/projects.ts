@@ -1,10 +1,27 @@
+/**
+ * lib/services/projects.ts
+ *
+ * WHAT   Stub of the project service: isKnownProject, getProject (sample residence and clinic, "untitled-N"
+ *        blank projects and generated "p2p-<sqft>-<beds>-<baths>" plans), planProjectId and projectLabel (names
+ *        for tabs without loading the project).
+ * FOR    The route pages (app/app/projects/[projectId], app/demo) and the document tabs. Prompt-to-Plan results
+ *        are stateless: the project id carries the parameters, so the plan can be rebuilt from the URL. Swap
+ *        for a real API and keep the signatures.
+ * DEBUG  - A project URL gives 404: getProject returns null for ids that match none of the patterns.
+ *        - A generated plan has odd numbers: generatedProject derives everything from sqft, beds and baths.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { blankProject, CLINIC, CLINIC_PROJECT_ID, DEMO_PROJECT_ID, RESIDENCE } from "../mock-data";
 import type { Project } from "../types";
 
 /* Project service stub. Swap for a real API; keep the signatures. */
 
+/** Ids of the sample projects. */
 export const KNOWN_PROJECT_IDS = [DEMO_PROJECT_ID, CLINIC_PROJECT_ID] as const;
 
+/** True for the two sample projects. */
 export function isKnownProject(id: string): boolean {
   return (KNOWN_PROJECT_IDS as readonly string[]).includes(id) || /^untitled-\d+$/.test(id) || /^p2p-\d{3,4}-\d-\d(_5)?$/.test(id);
 }
@@ -53,6 +70,7 @@ function generatedProject(id: string, sqft: number, beds: number, baths: number)
   };
 }
 
+/** Load a project by id, or null when the id is unknown. */
 export async function getProject(id: string): Promise<Project | null> {
   if (id === DEMO_PROJECT_ID) return RESIDENCE;
   if (id === CLINIC_PROJECT_ID) return CLINIC;
@@ -63,6 +81,7 @@ export async function getProject(id: string): Promise<Project | null> {
   return null;
 }
 
+/** The id for a generated plan with these parameters. */
 export function planProjectId(sqft: number, beds: number, baths: number): string {
   return `p2p-${Math.round(sqft)}-${beds}-${String(baths).replace(".", "_")}`;
 }

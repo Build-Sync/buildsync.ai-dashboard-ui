@@ -1,3 +1,21 @@
+/**
+ * components/settings/route-parts.tsx
+ *
+ * WHAT   Shared logic for the Settings routes: which pane a URL shows (PaneFor), URL validation with redirect
+ *        or 404 (checkSlug), the URLs to pre-render (settingsStaticParams), the modal layout
+ *        (SettingsModalLayout) and the page component (SettingsRoutePage).
+ * FOR    The real /settings/[[...slug]] page and the intercepted copies under
+ *        app/app/projects/[projectId]/@modal and app/demo/@modal all import from here, so the logic exists
+ *        once.
+ * DEBUG  - A settings URL gives a 404: checkSlug accepts only the 11 page ids in lib/settings-pages.ts, plus a
+ *          second segment for integrations/<agentId>.
+ *        - /settings shows General: it redirects to /settings/general.
+ *        - A new pane does not appear: add it to SETTINGS_PAGES (lib/settings-pages.ts) and to the switch in
+ *          PaneFor.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { SETTINGS_PAGE_BY_ID, SETTINGS_PAGES } from "@/lib/settings-pages";
@@ -17,8 +35,10 @@ import { SettingsFrame } from "./SettingsFrame";
 
 /* Shared by the real /settings/* pages and the intercepted modal slots, so the logic exists once. */
 
+/** Type guard: true when `v` is one of the known agent ids (the /settings/integrations/[agentId] segment). */
 export const isAgentId = (v: string | undefined): v is AgentId => !!v && (AGENT_IDS as readonly string[]).includes(v);
 
+/** The pane component for a settings slug; an unknown first segment falls back to General. */
 export function PaneFor({ slug }: { slug: string[] }): ReactNode {
   const [page, sub] = slug;
   switch (page) {

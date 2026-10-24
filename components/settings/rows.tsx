@@ -1,3 +1,19 @@
+/**
+ * components/settings/rows.tsx
+ *
+ * WHAT   Building blocks used by every settings pane: useDraft() (read the live draft, write through
+ *        updateDraft), <Row> (label and help text on the left, control on the right), <Group> (a titled block)
+ *        and <Hint> (a muted note).
+ * FOR    Keeping the panes consistent and making "preview now, save on Apply, discard on Close" work: panes
+ *        never write saved settings directly, only the draft.
+ * DEBUG  - A control seems to do nothing: the pane must write through `set(...)` from useDraft, not to
+ *          app.getState().settings.
+ *        - A change survives Close: something wrote to the saved settings instead of the draft (selectEffective
+ *          returns the draft when one exists).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import type { ReactNode } from "react";
@@ -29,6 +45,7 @@ export function Row({ label, help, children, htmlFor, stack }: { label: string; 
   );
 }
 
+/** A titled block of rows; `aside` is shown at the right of the title (a count or a button). */
 export function Group({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
   return (
     <section className="mb-7">
@@ -41,6 +58,7 @@ export function Group({ title, children, aside }: { title: string; children: Rea
   );
 }
 
+/** A muted explanatory note, usually at the bottom of a pane. */
 export function Hint({ children }: { children: ReactNode }) {
   return <p className="mt-2 rounded-md bg-t1/5 px-3 py-2 text-[0.75rem] leading-snug text-t2">{children}</p>;
 }

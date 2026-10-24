@@ -1,0 +1,22 @@
+Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+
+BuildSync AI workspace UI and routing (the "Software")
+
+The Software, including its source code, documentation, tests, icons and
+every other asset created for it, is the intellectual property of
+Giordano Bertin-Maurice (the "Owner").
+
+NO LICENCE IS GRANTED. Without the Owner's prior written permission, nobody may
+use, copy, modify, merge, publish, distribute, sublicense, sell, host, or
+create derivative works from the Software, in whole or in part.
+
+Third-party software and fonts that the Software depends on (for example
+Next.js, React, Tailwind CSS, Zustand, lucide-react, and the IBM Plex and Inter
+typefaces) are not the Owner's work. They remain under their own licences,
+which are shipped with those packages.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. THE SAMPLE PROJECTS,
+COSTS, STRESS RESULTS AND CODE CITATIONS IT DISPLAYS ARE ILLUSTRATIVE ONLY AND
+ARE NOT ENGINEERING ADVICE.

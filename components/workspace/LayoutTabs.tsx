@@ -1,3 +1,14 @@
+/**
+ * components/workspace/LayoutTabs.tsx
+ *
+ * WHAT   Tabs under the canvas: Model plus each paper-space sheet layout (A-101 Floor Plan, A-201 Section,
+ *        S-301 Structural) and + to add a layout.
+ * FOR    Switching between the 3D / 2D model and the sheet views (Viewport/SheetView.tsx). State lives in the
+ *        workspace store: `layoutTab` and `sheets`.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon } from "@/components/icons";

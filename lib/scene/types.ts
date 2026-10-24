@@ -1,3 +1,19 @@
+/**
+ * lib/scene/types.ts
+ *
+ * WHAT   The data model of the 3D scene: axis-extruded prisms (the geometry), selectable elements, MEP runs and
+ *        devices, trees, contours, callouts, stress points, room labels, door swings, dimensions, grid bubbles
+ *        and the Scene that holds them. World axes are X = east, Y = north, Z = up, in feet.
+ * FOR    Used by the scene builders, the renderer, the Model Explorer, the Properties palette and the overlays.
+ *        Prisms are extruded along z or y so a section cut is a simple clamp, with no solid modelling needed.
+ * DEBUG  - An element does not appear: its prism needs a layer in LAYER_IDS and a phase in PHASE_ORDER, and its
+ *          layer must be visible.
+ *        - The section cut shows wrong faces: check axis, a0 and a1 of the prism and the sectionOnly / capOnly
+ *          / underground flags.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { LayerId } from "../types";
 
 /* Scene model for the SVG viewport.
@@ -5,15 +21,20 @@ import type { LayerId } from "../types";
  * Geometry is built from axis-extruded prisms so a section cut is just a
  * clamp / half-plane clip — no CSG needed. */
 
+/** A 2D point [x, y] in feet. */
 export type V2 = [number, number];
+/** A 3D point [x, y, z] in feet. */
 export type V3 = [number, number, number];
 
+/** Id of a building level. */
 export type LevelKey = "site" | "foundation" | "level1" | "level2" | "roof";
 
 /** Keys of the user-editable Appearance colours (Properties → Appearance). */
 export type AppearanceKey = "walls" | "roof" | "structural" | "topography" | "electrical" | "plumbing";
+/** The user-editable colours (Properties → Appearance). */
 export type AppearanceMap = Record<AppearanceKey, string>;
 
+/** The default colour of each appearance slot. */
 export const DEFAULT_APPEARANCE: AppearanceMap = {
   walls: "#c9ced8",
   roof: "#b4604a",
@@ -36,8 +57,10 @@ export type FixedColor =
   | "hvac"
   | "fire";
 
+/** A colour slot: a user-editable one or a fixed one. */
 export type ColorKey = AppearanceKey | FixedColor;
 
+/** Colours that users cannot change. */
 export const FIXED_COLORS: Record<FixedColor, string> = {
   glass: "#7fc4e8",
   door: "#8a6a4c",
@@ -51,6 +74,7 @@ export const FIXED_COLORS: Record<FixedColor, string> = {
   fire: "#ef5b5b",
 };
 
+/** The kind of building element (wall, beam, door …). */
 export type Category =
   | "Wall"
   | "Partition"
@@ -70,8 +94,10 @@ export type Category =
   | "Landscape"
   | "Paving";
 
+/** Which building system an element belongs to. */
 export type SystemName = "Architectural" | "Structural" | "MEP" | "Site" | "Interior";
 
+/** A construction phase of the scene (used by the timeline). */
 export type PhaseKey =
   | "site"
   | "foundation"
@@ -82,6 +108,7 @@ export type PhaseKey =
   | "mep"
   | "finishes";
 
+/** Construction phases in build order. */
 export const PHASE_ORDER: PhaseKey[] = [
   "site",
   "foundation",
@@ -93,6 +120,7 @@ export const PHASE_ORDER: PhaseKey[] = [
   "finishes",
 ];
 
+/** One extruded piece of geometry; an element is one or more prisms. */
 export interface Prism {
   /** unique per prism; `id` below is the element it belongs to (a wall with openings is many prisms) */
   key: string;
@@ -125,8 +153,10 @@ export interface Prism {
   lift?: number;
 }
 
+/** Kind of MEP run. */
 export type RunKind = "electrical" | "plumbing" | "hvac" | "fire";
 
+/** A pipe, conduit or duct drawn as a polyline. */
 export interface Run {
   id: string;
   layer: LayerId;
@@ -139,6 +169,7 @@ export interface Run {
   underground?: boolean;
 }
 
+/** A device on a run: panel, outlet, light, fixture, sprinkler head, unit or valve. */
 export interface Device {
   id: string;
   layer: LayerId;
@@ -150,6 +181,7 @@ export interface Device {
   level: LevelKey;
 }
 
+/** A tree or shrub in the landscape. */
 export interface Tree {
   id: string;
   at: V3;
@@ -158,6 +190,7 @@ export interface Tree {
   radius: number;
 }
 
+/** A topography contour line. */
 export interface Contour {
   id: string;
   z: number;
@@ -165,6 +198,7 @@ export interface Contour {
   label?: string;
 }
 
+/** A label pinned to a point of the model in section view. */
 export interface Callout {
   id: string;
   at: V3;
@@ -174,6 +208,7 @@ export interface Callout {
   sub?: string;
 }
 
+/** A point where the stress overlay shows a value in ksi. */
 export interface StressPoint {
   id: string;
   at: V3;
@@ -182,6 +217,7 @@ export interface StressPoint {
   label: string;
 }
 
+/** A room name and area on the plan. */
 export interface RoomLabel {
   id: string;
   name: string;
@@ -190,6 +226,7 @@ export interface RoomLabel {
   level: LevelKey;
 }
 
+/** A door swing arc on the plan. */
 export interface DoorSwing {
   id: string;
   hinge: V2;
@@ -200,6 +237,7 @@ export interface DoorSwing {
   level: LevelKey;
 }
 
+/** A dimension string on the plan. */
 export interface Dimension {
   id: string;
   from: V2;
@@ -210,6 +248,7 @@ export interface Dimension {
   level: LevelKey;
 }
 
+/** A structural grid line bubble on the plan. */
 export interface GridBubble {
   id: string;
   at: V2;
@@ -233,6 +272,7 @@ export interface SceneElement {
   keys: string[];
 }
 
+/** A complete scene: geometry, elements, annotations and the numbers the camera and section need. */
 export interface Scene {
   kind: "residence" | "clinic" | "blank";
   prisms: Prism[];

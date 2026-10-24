@@ -1,5 +1,22 @@
-/* Workspace behaviour: palettes, ribbon (including panel collapse and every command), command line and AI proposals,
- * hotkeys, context menu, document tabs, timeline, sheets, settings draft / Apply / persistence, Connect dialog. */
+/**
+ * e2e/workspace.mjs
+ *
+ * WHAT   Browser tests of workspace behaviour: every palette tab and explorer tab; the eight ribbon tabs, panel
+ *        collapse and every ribbon command; the command line and AI proposals (Accept / Reject); keyboard
+ *        shortcuts; the context menu; document tabs; the timeline; sheets; and the Settings draft / Apply /
+ *        persistence flow and the Connect dialog.
+ * FOR    `npm run e2e:workspace` (or `npm run e2e`). Needs the app running (BASE, default
+ *        http://localhost:3000) and a Chromium. Screenshots go to e2e/.shots (git-ignored).
+ * DEBUG  - A ribbon command check fails: confirm the command exists in lib/commands.ts and the button in
+ *          ribbon.config.ts.
+ *        - Selection checks read the Properties header ("N elements", "1 selected", "No selection") because
+ *          modifier clicks must be sent with keyboard.down / up, not page.mouse.click({ modifiers }).
+ *        - A check times out waiting for a data-testid: the id is set on the component (search the repo for it);
+ *          open() and ready() in the harness wait until the workspace is mounted and hydrated.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { browser, check, clickViewport, eq, finish, gotoSettings, has, open, page, ready, shot, sleep, BASE } from "./harness.mjs";
 
 const PALETTES = ["properties", "health", "compliance", "cost", "comments", "issues", "simulation", "stress-test", "clash", "ai-analysis", "council"];

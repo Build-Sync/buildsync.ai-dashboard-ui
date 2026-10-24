@@ -1,3 +1,22 @@
+/**
+ * components/workspace/Ribbon/fit.ts
+ *
+ * WHAT   The measurements and maths behind ribbon panel collapse. Like AutoCAD, when a tab is wider than the
+ *        window, the right-most panels fold into one button each. This module keeps the available width, the
+ *        rem size and the measured natural width of each panel (cached per tab, theme, UI scale and font load),
+ *        plus a rem-based estimate used until real widths are measured.
+ * FOR    RibbonPanels.tsx. The estimate makes the server render and the first browser render agree (no
+ *        hydration mismatch); the measured widths then replace it.
+ * DEBUG  - Panels collapse too early or too late: check the cache key in RibbonPanels (tab | look | fonts), the
+ *          container width read by its ResizeObserver, and COLLAPSED_REM.
+ *        - Wrong after web fonts load: ribbonMetrics.invalidate() clears the widths when fonts finish loading;
+ *          the Measurer re-measures.
+ *        - Windows and Mac differ slightly in text width: that is why real measurement, not the estimate,
+ *          decides the final result.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useSyncExternalStore } from "react";
@@ -34,6 +53,7 @@ function commit(next: Metrics) {
   listeners.forEach((l) => l());
 }
 
+/** Write access to the shared ribbon measurements (container width, measured panel widths, font invalidation). */
 export const ribbonMetrics = {
   setContainer(container: number, rem: number) {
     if (Math.abs(state.container - container) < 0.5 && state.rem === rem) return;
@@ -50,6 +70,7 @@ export const ribbonMetrics = {
   },
 };
 
+/** Subscribe a component to the shared ribbon measurements. */
 export function useRibbonMetrics(): Metrics {
   return useSyncExternalStore(
     (l) => {
@@ -69,6 +90,7 @@ const GLYPH = 0.34; // average glyph at 11px
 const COL_GAP = 0.125; // gap-0.5
 const PANEL_CHROME = 0.5 + 0.07; // section px-1 + divider
 
+/** Estimated width of a panel in rem, used until the real width has been measured. */
 export function estimatePanelRem(panel: RibbonPanel): number {
   const cols = panelColumns(panel.items);
   let w = 0;

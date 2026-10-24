@@ -1,5 +1,23 @@
+/**
+ * lib/agents.ts
+ *
+ * WHAT   Static facts about the AI agents the app can connect (Claude, ChatGPT, Kimi, Gemini, a local model, a
+ *        custom endpoint): names, vendors, colours, supported connection methods, permission scopes, task
+ *        routing defaults, and the list of future integrations.
+ * FOR    The Integrations settings page, the agent selector, the Connect dialog and the AI routing service.
+ *        initialAgents() gives the starting state (Claude and ChatGPT connected). Colours and letters are
+ *        neutral tiles, not vendor logos.
+ * DEBUG  - An agent card shows wrong text: edit AGENT_META.
+ *        - Tasks go to the wrong agent: DEFAULT_ROUTING is the default; users change it in Settings →
+ *          Integrations (settings.routing).
+ *        - A new agent id must be added to AGENT_IDS in lib/types.ts, AGENT_META and AGENT_ORDER.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import type { Agent, AgentId, AuthMethod, TaskKind } from "./types";
 
+/** Fixed description of an agent: name, vendor, colour, letter, connection methods and URL needs. */
 export interface AgentMeta {
   id: AgentId;
   name: string;
@@ -18,6 +36,7 @@ export interface AgentMeta {
   note?: string;
 }
 
+/** Metadata for every agent id. */
 export const AGENT_META: Record<AgentId, AgentMeta> = {
   claude: {
     id: "claude",
@@ -99,16 +118,20 @@ export const AGENT_META: Record<AgentId, AgentMeta> = {
   },
 };
 
+/** The order agents are listed in. */
 export const AGENT_ORDER: AgentId[] = ["claude", "chatgpt", "kimi", "gemini", "local", "custom"];
 
+/** Display name of each connection method. */
 export const METHOD_LABEL: Record<AuthMethod, string> = {
   "api-key": "API key",
   oauth: "Sign in (OAuth)",
   mcp: "MCP / endpoint URL",
 };
 
+/** Display name of each model tier. */
 export const MODEL_TIER_LABEL = { auto: "Auto", fast: "Fast", capable: "Most capable" } as const;
 
+/** What an agent may do, with the default for each scope. */
 export const PERMISSION_SCOPES = [
   { id: "read-model", label: "Read model & selection", default: true },
   { id: "run-checks", label: "Run compliance & cost checks", default: true },
@@ -135,6 +158,7 @@ export function initialAgents(): Agent[] {
   });
 }
 
+/** Display name of each routable task. */
 export const TASK_LABEL: Record<TaskKind, string> = {
   compliance: "Compliance & code review",
   cost: "Cost estimation",
@@ -143,6 +167,7 @@ export const TASK_LABEL: Record<TaskKind, string> = {
   chat: "Command-line chat",
 };
 
+/** Which agent handles each task by default ("active" = the active agent). */
 export const DEFAULT_ROUTING: Record<TaskKind, AgentId | "active"> = {
   compliance: "claude",
   cost: "chatgpt",
@@ -151,6 +176,7 @@ export const DEFAULT_ROUTING: Record<TaskKind, AgentId | "active"> = {
   chat: "active",
 };
 
+/** A planned integration shown as "Notify me". */
 export interface OtherIntegration {
   id: string;
   name: string;

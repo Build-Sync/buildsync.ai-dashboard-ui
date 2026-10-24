@@ -1,3 +1,17 @@
+/**
+ * components/settings/panes/Units.tsx
+ *
+ * WHAT   Settings → Units: measurement system (imperial ft-in, metric m or mm), length precision, angle units,
+ *        area and volume units, currency and date format, with a live preview line.
+ * FOR    The `settings.units` values. Every length, coordinate, cost and date in the app is formatted with them
+ *        through fmtLength, fmtCoord, fmtMoney and fmtDate in lib/utils.ts.
+ * DEBUG  - The preview shows the wrong format: the formatting functions live in lib/utils.ts; this pane only
+ *          passes the draft values.
+ *        - Currency: costs are stored in USD and converted for display with mock rates (fmtMoney).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Select } from "@/components/ui/controls";
@@ -5,6 +19,7 @@ import type { MeasureSystem, DateFormat } from "@/lib/utils";
 import { fmtDate, fmtLength, fmtMoney } from "@/lib/utils";
 import { Hint, Row, useDraft } from "../rows";
 
+/** The Settings → Units pane. */
 export function UnitsPane() {
   const { s, set } = useDraft();
   const u = s.units;

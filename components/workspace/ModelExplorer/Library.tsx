@@ -1,3 +1,19 @@
+/**
+ * components/workspace/ModelExplorer/Library.tsx
+ *
+ * WHAT   The Library tab: a Components grid (Wall, Door, Window, Column, Beam, Truss, Stair, Fixture,
+ *        Furniture, Structural, MEP) and a Materials list with swatches and how many elements use each.
+ *        Clicking a material highlights every element that uses it.
+ * FOR    Starting a placement tool (setTool with a prompt) and highlighting materials (workspace
+ *        `materialHighlight`). Usage counts come from materialUsage in lib/scene.
+ * DEBUG  - Dragging a component onto the viewport does nothing yet: the drag source sets the type
+ *          application/x-bs-component, but the viewport has no drop handler in this UI-only build. Clicking
+ *          sets the active tool and shows the prompt.
+ *        - A material is disabled: no element in the open scene uses it.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useMemo } from "react";
@@ -11,6 +27,7 @@ import { useScene } from "../hooks";
 /* Library: Components grid (drag into the viewport) + Materials list with swatches.
  * Clicking a material highlights everywhere it's used. */
 
+/** The placeable components shown in the Library grid. */
 export const COMPONENTS: { id: string; label: string; icon: IconKey }[] = [
   { id: "wall", label: "Wall", icon: "wall" },
   { id: "door", label: "Door", icon: "door" },
@@ -38,6 +55,7 @@ const MATERIALS: { id: string; swatch: string }[] = [
   { id: "Custom", swatch: "conic-gradient(#ef5b5b,#f0a940,#3ecf8e,#4c8dff,#8b6cf0,#ef5b5b)" },
 ];
 
+/** The Library tab (components and materials). */
 export function Library() {
   const ws = useWsApi();
   const scene = useScene();

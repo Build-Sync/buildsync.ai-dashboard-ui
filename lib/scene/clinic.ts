@@ -1,3 +1,13 @@
+/**
+ * lib/scene/clinic.ts
+ *
+ * WHAT   Builds the sample clinic (single storey, 48' × 28', flat roof with parapet, accessible entry) and the
+ *        empty scene used by blank projects.
+ * FOR    getScene("clinic") and getScene("blank").
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { SceneBuilder, type BaseOpts, type Opening } from "./builder";
 import type { LevelKey, Scene, V2, V3 } from "./types";
 
@@ -44,6 +54,7 @@ function colZones(side: "S" | "N" | "W" | "E"): Opening[] {
   return out;
 }
 
+/** Build the clinic scene. */
 export function buildClinic(): Scene {
   const b = new SceneBuilder();
 
@@ -237,6 +248,7 @@ export function buildClinic(): Scene {
   });
 }
 
+/** An empty scene: terrain and grid only. */
 export function buildBlank(): Scene {
   const b = new SceneBuilder();
   b.box(
