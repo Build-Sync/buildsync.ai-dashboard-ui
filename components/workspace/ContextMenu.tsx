@@ -1,3 +1,19 @@
+/**
+ * components/workspace/ContextMenu.tsx
+ *
+ * WHAT   The right-click menu over the viewport (it replaces the Edit menu): Cut, Copy, Paste, Duplicate,
+ *        Delete, Select / Deselect All, Find, Group / Ungroup, Lock / Unlock, Isolate, Hide / Show All and
+ *        Properties. Rows that do not apply are disabled (nothing selected, empty clipboard).
+ * FOR    Opened by the viewport at the pointer position through the workspace `contextMenu` state; every row
+ *        runs a command through useRunner. Shortcuts shown follow the user's OS (⌘ on a Mac).
+ * DEBUG  - The menu never shows: ModelViewport's onContextMenu handler (the browser's contextmenu event:
+ *          right-click, or Control-click on a Mac) calls setContextMenu({x, y}); check that handler.
+ *        - A row is disabled: see hasSel / multi / clip, derived from the selection and clipboard in the
+ *          workspace store.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Menu, MenuItem, MenuSep } from "@/components/ui/Menu";
@@ -13,8 +29,8 @@ export function ContextMenu() {
   const multi = useWs((s) => s.selection.length > 1);
   const clip = useWs((s) => s.clipboard.length > 0);
   const close = () => ws.getState().setContextMenu(null);
-  const item = (label: string, cmd: string, hint?: string, disabled?: boolean) => (
-    <MenuItem label={label} hint={hint} disabled={disabled} onClick={() => run(cmd)} onClose={close} />
+  const item = (label: string, cmd: string, shortcut?: string, disabled?: boolean) => (
+    <MenuItem label={label} shortcut={shortcut} disabled={disabled} onClick={() => run(cmd)} onClose={close} />
   );
   return (
     <Menu anchor={pos ? { x: pos.x, y: pos.y, h: 0 } : null} onClose={close} label="Context menu" width="13rem">
@@ -22,7 +38,7 @@ export function ContextMenu() {
       {item("Copy", "COPYCLIP", "Ctrl+C", !hasSel)}
       {item("Paste", "PASTECLIP", "Ctrl+V", !clip)}
       {item("Duplicate", "DUPLICATE", "Ctrl+D", !hasSel)}
-      {item("Delete", "DELETE", "Del", !hasSel)}
+      {item("Delete", "DELETE", "Delete", !hasSel)}
       <MenuSep />
       {item("Select All", "SELECTALL", "Ctrl+A")}
       {item("Deselect All", "DESELECT", "Esc", !hasSel)}

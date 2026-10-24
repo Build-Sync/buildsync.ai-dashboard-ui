@@ -1,9 +1,28 @@
+/**
+ * components/ui/Menu.tsx
+ *
+ * WHAT   Floating menu building blocks: <Menu> (a position:fixed popup that closes on an outside press, Esc or
+ *        window blur), <MenuItem> (icon or check, label, optional shortcut or hint), <MenuSep>, <MenuLabel>,
+ *        and anchorOf(element) to open a menu under a trigger.
+ * FOR    The right-click context menu, the agent selector, viewport label menus and other pop-ups. Shortcuts
+ *        are passed as canonical combos (shortcut="Ctrl+K") and drawn per OS (⌘K on a Mac) by ShortcutLabel.
+ * DEBUG  - Menu opens off-screen or in the wrong spot: its position is measured in a layout effect from the
+ *          anchor and its own size; check the Anchor passed in.
+ *        - Clipped by a panel: it is position:fixed at z-index 90, so only a transformed ancestor can clip it.
+ *        - A shortcut shows "Ctrl" on a Mac: pass it via `shortcut` (canonical combo), not as pre-formatted
+ *          `hint` text.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Icon, type IconKey } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { ShortcutLabel } from "./Kbd";
 
+/** Where a menu opens: a point, plus how to flip it (right-aligned, upwards). */
 export interface Anchor {
   x: number;
   y: number;
@@ -15,6 +34,7 @@ export interface Anchor {
   up?: boolean;
 }
 
+/** Anchor just under (or above, or right-aligned to) a trigger element; null if the element is missing. */
 export function anchorOf(el: Element | null, opts: Partial<Pick<Anchor, "right" | "up">> = {}): Anchor | null {
   if (!el) return null;
   const r = el.getBoundingClientRect();
@@ -82,9 +102,11 @@ export function Menu({
   );
 }
 
+/** One menu row: closes the menu after onClick unless keepOpen is set. */
 export function MenuItem({
   label,
   hint,
+  shortcut,
   icon,
   onClick,
   checked,
@@ -95,7 +117,10 @@ export function MenuItem({
   onClose,
 }: {
   label: ReactNode;
+  /** free text for the right-hand column */
   hint?: string;
+  /** canonical shortcut ("Ctrl+Shift+S"); shown as ⇧⌘S on a Mac. Wins over `hint`. */
+  shortcut?: string;
   icon?: IconKey;
   onClick?: () => void;
   checked?: boolean;
@@ -122,15 +147,17 @@ export function MenuItem({
       <span className="grid size-4 shrink-0 place-items-center text-t2">{checked ? <Icon name="check" size={13} className="text-accent" /> : icon ? <Icon name={icon} size={14} /> : null}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {trailing}
-      {hint && <span className="mono shrink-0 text-[0.625rem] text-t3">{hint}</span>}
+      {shortcut ? <ShortcutLabel combo={shortcut} /> : hint && <span className="mono shrink-0 text-[0.625rem] text-t3">{hint}</span>}
     </button>
   );
 }
 
+/** A thin divider between groups of menu rows. */
 export function MenuSep() {
   return <div role="separator" className="my-1 h-px bg-soft" />;
 }
 
+/** A small uppercase heading inside a menu. */
 export function MenuLabel({ children }: { children: ReactNode }) {
   return <div className="label-xs px-2.5 pb-0.5 pt-1.5">{children}</div>;
 }

@@ -1,20 +1,42 @@
+/**
+ * components/settings/panes/Display.tsx
+ *
+ * WHAT   Settings → Display: theme (dark, light, high contrast, match system), accent colour, UI scale,
+ *        crosshair size, scroll gesture, ViewCube / navigation bar / UCS icon visibility, tooltips and the
+ *        model-space background colour.
+ * FOR    The `settings.display` values. Theme, accent and UI scale preview live while the panel is open
+ *        (ThemeApplier in lib/store/app-provider.tsx applies the draft) and are reverted by Close.
+ * OS     "Match system" follows macOS Appearance, the Windows app mode or the Linux desktop's dark mode, and
+ *        the increase-contrast setting (lib/theme.ts). "Scroll gesture" chooses between mouse-wheel and
+ *        trackpad behaviour (lib/input.ts).
+ * DEBUG  - The background colour picker shows a different default than expected: the default follows the
+ *          resolved theme (useResolvedTheme), not the stored setting.
+ *        - Theme does not change: ThemeApplier writes data-theme on <html> only after the saved settings have
+ *          loaded (hydrated).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Select, Slider, Switch } from "@/components/ui/controls";
+import type { ScrollGesture } from "@/lib/input";
 import { ACCENTS } from "@/lib/settings";
+import { THEME_VIEWPORT_BG, type ThemeSetting } from "@/lib/theme";
+import { useResolvedTheme } from "@/lib/use-theme";
 import { cn } from "@/lib/utils";
 import { Hint, Row, useDraft } from "../rows";
 
-const THEME_BG = { dark: "#12161d", light: "#eef0f3", hc: "#000000" } as const;
-
+/** The Settings → Display pane. */
 export function DisplayPane() {
   const { s, set } = useDraft();
   const d = s.display;
-  const bg = d.background ?? THEME_BG[d.theme];
+  const drawn = useResolvedTheme(d.theme);
+  const bg = d.background ?? THEME_VIEWPORT_BG[drawn];
   return (
     <div data-testid="pane-display">
-      <Row label="Theme" help="Dark is the default. Light uses an off-white palette set in Inter; High contrast maximises text and edge contrast.">
-        <Select<"dark" | "light" | "hc"> label="Theme" value={d.theme} onChange={(v) => set((x) => (x.display.theme = v))} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "hc", label: "High contrast" }]} />
+      <Row label="Theme" help="Dark is the default. Light uses an off-white palette set in Inter; High contrast maximises text and edge contrast. Match system follows macOS Appearance, Windows app mode or your desktop's dark mode and its increase-contrast setting.">
+        <Select<ThemeSetting> label="Theme" value={d.theme} onChange={(v) => set((x) => (x.display.theme = v))} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "hc", label: "High contrast" }, { value: "system", label: "Match system" }]} />
       </Row>
       <Row label="Accent colour" help="Used for selection, active toggles and primary buttons." stack>
         <div className="flex flex-wrap items-center gap-2.5" role="radiogroup" aria-label="Accent colour">
@@ -32,6 +54,9 @@ export function DisplayPane() {
       </Row>
       <Row label="Crosshair size" help="Length of the crosshair as a share of the viewport.">
         <Slider label="Crosshair size" min={5} max={100} step={5} value={d.crosshairSize} suffix="%" onChange={(v) => set((x) => (x.display.crosshairSize = v))} />
+      </Row>
+      <Row label="Scroll gesture" help="Auto zooms with a mouse wheel and pans with a trackpad or Magic Mouse. Pinching always zooms; Space + drag always pans.">
+        <Select<ScrollGesture> label="Scroll gesture" value={d.scrollGesture} onChange={(v) => set((x) => (x.display.scrollGesture = v))} options={[{ value: "auto", label: "Auto (by device)" }, { value: "zoom", label: "Scroll zooms" }, { value: "pan", label: "Scroll pans" }]} />
       </Row>
       <Row label="Show ViewCube">
         <Switch label="Show ViewCube" checked={d.showViewCube} onChange={(v) => set((x) => (x.display.showViewCube = v))} />

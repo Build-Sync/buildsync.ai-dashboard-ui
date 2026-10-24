@@ -1,7 +1,28 @@
+/**
+ * components/workspace/AppMenu.tsx
+ *
+ * WHAT   The application menu opened by the "B" button (it replaces the File menu): New / Open / Save / Save
+ *        As, Import and Export (they open the import / export dialogs), project information, versions, archive,
+ *        close and settings; on the right the five most recent projects.
+ * FOR    Project-level actions. Shortcuts are drawn with ShortcutLabel in the user's OS style (⌘N on a Mac,
+ *        Ctrl+N elsewhere); the real key handling lives in useHotkeys.ts and lib/commands.ts.
+ * OS     Listens to pointerdown and Escape in the capture phase, so it closes reliably with a mouse, a trackpad
+ *        or a pen on every platform.
+ * DEBUG  - The menu does not close on an outside click: presses inside [data-app-menu] and on the [data-app-
+ *          button] trigger (AppBar) are ignored on purpose.
+ *        - A recent project only shows a toast: ids unknown to lib/services/projects.ts are not part of the
+ *          demo workspace.
+ *        - A row shows a different shortcut than the real key: the labels in ROWS are separate from COMMANDS in
+ *          lib/commands.ts; keep them in step.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
 import { Icon, type IconKey } from "@/components/icons";
+import { ShortcutLabel } from "@/components/ui/Kbd";
 import { RECENT_PROJECTS } from "@/lib/mock-data";
 import { isKnownProject } from "@/lib/services/projects";
 import { useApp } from "@/lib/store/app-provider";
@@ -14,16 +35,17 @@ import { useRunner } from "./hooks";
 interface Row {
   label: string;
   icon: IconKey;
-  hint?: string;
+  /** canonical shortcut ("Ctrl+Shift+S"); rendered per OS by ShortcutLabel */
+  shortcut?: string;
   run?: string;
   sub?: { label: string; modal: "import" | "export"; data: Record<string, string> }[];
 }
 
 const ROWS: Row[] = [
-  { label: "New Project", icon: "newfile", hint: "Ctrl+N", run: "NEW" },
-  { label: "Open Project", icon: "open", hint: "Ctrl+O", run: "OPEN" },
-  { label: "Save", icon: "save", hint: "Ctrl+S", run: "QSAVE" },
-  { label: "Save As", icon: "save", hint: "Ctrl+Shift+S", run: "SAVEAS" },
+  { label: "New Project", icon: "newfile", shortcut: "Ctrl+N", run: "NEW" },
+  { label: "Open Project", icon: "open", shortcut: "Ctrl+O", run: "OPEN" },
+  { label: "Save", icon: "save", shortcut: "Ctrl+S", run: "QSAVE" },
+  { label: "Save As", icon: "save", shortcut: "Ctrl+Shift+S", run: "SAVEAS" },
   {
     label: "Import",
     icon: "upload",
@@ -38,9 +60,10 @@ const ROWS: Row[] = [
   { label: "Project Versions", icon: "versions", run: "VERSIONS" },
   { label: "Archive Project", icon: "archive", run: "ARCHIVE" },
   { label: "Close Project", icon: "close", run: "CLOSE" },
-  { label: "Settings & Connectors", icon: "settings", hint: "Ctrl+,", run: "SETTINGS" },
+  { label: "Settings & Connectors", icon: "settings", shortcut: "Ctrl+,", run: "SETTINGS" },
 ];
 
+/** Mounts the menu panel only while it is open, so its expanded state resets each time. */
 export function AppMenu({ anchorRef }: { anchorRef: RefObject<HTMLButtonElement | null> }) {
   const open = useWs((s) => s.appMenu);
   // the panel is mounted only while open, so its expanded state resets on every open
@@ -99,7 +122,7 @@ function AppMenuPanel({ anchorRef }: { anchorRef: RefObject<HTMLButtonElement | 
             >
               <Icon name={r.icon} size={15} className="shrink-0 text-t2" />
               <span className="flex-1">{r.label}</span>
-              {r.hint && <span className="mono text-[0.625rem] text-t3">{r.hint}</span>}
+              {r.shortcut && <ShortcutLabel combo={r.shortcut} />}
               {r.sub && <Icon name="chevRight" size={12} className={cn("text-t3 transition-transform", expanded === r.label && "rotate-90")} />}
             </button>
             {r.sub && expanded === r.label && (

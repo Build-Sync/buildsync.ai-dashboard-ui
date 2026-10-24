@@ -1,3 +1,29 @@
+/**
+ * lib/commands.ts
+ *
+ * WHAT   The command registry. Every ribbon button, command-line alias, keyboard shortcut, context-menu item
+ *        and search result resolves through COMMANDS: each command has a name, title, description, group,
+ *        aliases, default shortcut and a run() function. Also resolveCommand (typed text to command, user
+ *        aliases first), runInput (the command line) and runCommand (ribbon and menus), and askAgent (anything
+ *        unknown goes to the AI agent).
+ * FOR    One place to add a feature: add a command here, then reference its name from the ribbon
+ *        (ribbon.config.ts) or a menu. Shortcuts are stored in canonical form where "Ctrl" means the primary
+ *        modifier (⌘ on a Mac); lib/shortcuts.ts and useHotkeys.ts match them per OS.
+ * OS     `key` is the default shortcut for every OS; `macKey` replaces it on macOS where the convention differs
+ *        ("" = none there, e.g. FULL: F11 is Show Desktop on macOS); `altKeys` also run the command everywhere
+ *        (e.g. NEW also on Ctrl/⌘+Alt+N because browsers keep Ctrl/⌘+N for a new window).
+ * DEBUG  - Typed text does nothing: resolveCommand matches the first word (and two-word names such as "ATTACH
+ *          HOST") case-insensitively against names and aliases; anything else is sent to the AI agent.
+ *        - A ribbon button logs "Unknown command": its item.command in ribbon.config.ts is not a name or alias
+ *          here.
+ *        - A shortcut does not fire: another command may use the same combo, or the browser reserves it; check
+ *          bindingsOf in lib/shortcuts.ts and Settings → Shortcuts (which flags clashes).
+ *        - Commands run against CommandCtx = { ws, app, router }; use wsState(c) / c.app.getState() inside
+ *          run().
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { AGENT_META } from "./agents";
 import { routeLabel, routePrompt } from "./services/ai";
 import { getScene, levelLabel } from "./scene";
@@ -10,26 +36,33 @@ import { SIM_TYPES, type SimType } from "./services/analysis";
 /* Command registry. Every ribbon button, command-line alias, keyboard shortcut,
  * context-menu item and app-bar search result resolves through here (spec §10.10). */
 
+/** The part of the Next.js router that commands use. */
 export interface Router {
   push: (href: string) => void;
   replace: (href: string) => void;
   back: () => void;
 }
 
+/** Everything a command needs: the workspace store, the app store and the router. */
 export interface CommandCtx {
   ws: WsStore;
   app: AppStore;
   router: Router;
 }
 
+/** One command: name, title, description, group, aliases, shortcuts and what it does. */
 export interface CommandDef {
   name: string;
   title: string;
   desc: string;
   group: string;
   aliases?: string[];
-  /** default keyboard shortcut, e.g. "F8", "Ctrl+Shift+S" */
+  /** default keyboard shortcut, e.g. "F8", "Ctrl+Shift+S". "Ctrl" is the primary modifier: ⌘ on a Mac. */
   key?: string;
+  /** replaces `key` on macOS where the platform convention differs ("" = no default shortcut there) */
+  macKey?: string;
+  /** more combos that also run the command on every platform (e.g. when a browser reserves the main one) */
+  altKeys?: string[];
   run: (c: CommandCtx, args: string[]) => void | Promise<void>;
 }
 
@@ -204,6 +237,7 @@ function buildCommands(): CommandDef[] {
       desc: "Create a new project",
       group: "File",
       key: "Ctrl+N",
+      altKeys: ["Ctrl+Alt+N"], // browsers keep Ctrl/⌘+N for "new window"
       run: (c) => {
         if (wsState(c).mode === "demo") return wsState(c).openModal("start-free");
         wsState(c).openModal("new-project");
@@ -257,6 +291,8 @@ function buildCommands(): CommandDef[] {
       desc: "Redo the last undone change",
       group: "File",
       key: "Ctrl+Y",
+      macKey: "Ctrl+Shift+Z",
+      altKeys: ["Ctrl+Shift+Z"],
       run: (c) => {
         const l = wsState(c).redo();
         if (l) log(c, "ok", `✓ Redo: ${l}`);
@@ -678,6 +714,7 @@ function buildCommands(): CommandDef[] {
       desc: "Full-screen workspace",
       group: "View",
       key: "F11",
+      macKey: "", // F11 is "Show Desktop" on macOS and ⌃⌘F already toggles full screen there
       run: async (c) => {
         try {
           if (document.fullscreenElement) await document.exitFullscreen();
@@ -760,6 +797,7 @@ async function runAnalysisFor(c: CommandCtx) {
   app.log("ai", `→ ${agent.name} finished the design review (${wsState(c).aiAnalysis.items?.length ?? 0} recommendations)`);
 }
 
+/** Every command, built once at start-up. */
 export const COMMANDS: CommandDef[] = buildCommands();
 
 const INDEX = new Map<string, CommandDef>();
@@ -768,10 +806,12 @@ for (const d of COMMANDS) {
   for (const a of d.aliases ?? []) INDEX.set(a.toUpperCase(), d);
 }
 
+/** Look a command up by exact name or alias (case-insensitive). */
 export function findCommand(name: string): CommandDef | undefined {
   return INDEX.get(name.toUpperCase());
 }
 
+/** A command found for typed text, with the remaining words as arguments. */
 export interface Resolved {
   def: CommandDef;
   args: string[];
@@ -834,6 +874,7 @@ export async function runCommand(c: CommandCtx, command: string): Promise<void> 
   await resolved.def.run(c, resolved.args);
 }
 
+/** The command name as shown in tooltips (drops internal HOST / LIB suffixes). */
 export function commandDisplay(command: string): string {
   return command.replace(/ (HOST|LIB)$/, "");
 }

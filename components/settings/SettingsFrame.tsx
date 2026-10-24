@@ -1,3 +1,26 @@
+/**
+ * components/settings/SettingsFrame.tsx
+ *
+ * WHAT   The Settings window: a left navigation of the 11 settings pages (accent bar on the active one), a
+ *        title and subtitle, the active pane, and a Close / Apply footer with an "Unapplied changes" notice. It
+ *        stays mounted while the user moves between pages, so the unapplied draft survives; the draft is
+ *        discarded when the frame unmounts.
+ * FOR    Both ways of opening settings: mode "modal" (the intercepting route over the workspace; Close =
+ *        router.back(), which returns to the exact workspace state) and mode "page" (/settings/* opened
+ *        directly; Close goes to /app).
+ * OS     Esc closes the window. Its scroll area uses `gutter-stable` so the pane does not jump when a classic
+ *        scrollbar (Windows, Linux) appears; macOS overlay scrollbars take no space.
+ * DEBUG  - Close goes to the wrong place: close() uses router.back() in modal mode and router.push("/app") in
+ *          page mode; check which mode the layout passes.
+ *        - Apply stays disabled: `dirty` compares the draft with the saved settings (settingsEqual in
+ *          lib/settings.ts).
+ *        - Esc in a nested dialog closes the whole window: nested dialogs must carry data-nested
+ *          (components/ui/Modal.tsx sets it) so the frame ignores that Esc.
+ *        - Focus escapes the dialog: useFocusTrap(ref, mode === "modal") is what keeps Tab inside.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
@@ -98,7 +121,7 @@ export function SettingsFrame({ mode, children }: { mode: "page" | "modal"; chil
           <h2 className="text-[1.25rem] font-semibold tracking-tight text-t1">{page.title}</h2>
           <p className="mt-1 text-[0.8125rem] text-t2">{page.subtitle}</p>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-8 py-5" data-testid="settings-pane">
+        <div className="gutter-stable min-h-0 flex-1 overflow-y-auto px-8 py-5" data-testid="settings-pane">
           {children}
         </div>
         <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-soft bg-panel-alt px-6 py-3">

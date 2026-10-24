@@ -1,0 +1,21 @@
+# .gitattributes
+#
+# WHAT   Line-ending and binary rules for Git.
+# FOR    Keeping files identical on every operating system: without this, a checkout on Windows can turn every
+#        file into CRLF, which shows up as whole-file diffs and confuses tools. Source is always LF; images and
+#        fonts are never touched.
+# DEBUG  - Every line of a file shows as changed: your editor or Git config converted line endings; this file
+#          forces LF on checkout, so run `git add --renormalize .` once.
+#
+# Author: Giordano Bertin-Maurice
+# Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+
+# Keep line endings identical on every operating system. Without this, a checkout on Windows
+# can turn every file into CRLF, which shows up as whole-file diffs and confuses tools.
+* text=auto eol=lf
+
+# Binary assets: never touch their bytes
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary

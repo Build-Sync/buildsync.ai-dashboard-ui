@@ -1,9 +1,29 @@
+/**
+ * components/workspace/ModelExplorer/ModelTree.tsx
+ *
+ * WHAT   The Model tab: a tree of Project → Site → Building → levels → categories → elements. Each row has
+ *        expand / collapse, an eye (visibility), a lock and a name; click selects (Shift-click, or ⌘-click on a
+ *        Mac / Ctrl-click elsewhere, adds to the selection), double-click renames, right-click opens a menu
+ *        (Select, Isolate, Hide, Show all, Rename, Zoom to).
+ * FOR    Browsing and bulk-editing the scene. The tree is built by buildModelTree in lib/scene; renames, hidden
+ *        and locked ids live in the workspace store.
+ * OS     The add-to-selection modifier is Shift or the platform's primary key (hasPrimaryModifier in
+ *        lib/platform.ts); on a Mac, Control-click opens the context menu instead.
+ * DEBUG  - A row is dim: all of its elements are hidden, or its layer is switched off.
+ *        - The eye of a category row that is tied to a layer switches that layer; the eye of any other row
+ *          hides or shows its elements.
+ *        - The tree does not refresh after a project change: it is memoised on the scene, project name and id.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/icons";
 import { Menu, MenuItem, MenuSep, type Anchor } from "@/components/ui/Menu";
 import { tip } from "@/components/ui/Tooltip";
+import { hasPrimaryModifier } from "@/lib/platform";
 import { buildModelTree, type TreeNode } from "@/lib/scene";
 import { useWs, useWsApi } from "@/lib/store/workspace-provider";
 import { cn } from "@/lib/utils";
@@ -14,6 +34,7 @@ import { useScene } from "../hooks";
 
 const OPEN_BY_DEFAULT = new Set(["project", "building", "site"]);
 
+/** The Model tab: expandable project tree with visibility, lock, rename and a context menu. */
 export function ModelTree() {
   const ws = useWsApi();
   const scene = useScene();
@@ -79,7 +100,7 @@ export function ModelTree() {
           aria-selected={selected}
           className={cn("group flex h-6 items-center gap-1 pr-1.5 text-[0.75rem] transition-colors", selected ? "bg-accent/20 text-t1" : "text-t1 hover:bg-t1/8", !vis && "opacity-50")}
           style={{ paddingLeft: 4 + depth * 12 }}
-          onClick={(e) => selectNode(n, e.shiftKey)}
+          onClick={(e) => selectNode(n, e.shiftKey || hasPrimaryModifier(e))}
           onDoubleClick={() => setRenaming(n.id)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -141,7 +162,7 @@ export function ModelTree() {
                 aria-selected={eSel}
                 className={cn("group flex h-[1.375rem] items-center gap-1 pr-1.5 text-[0.6875rem] transition-colors", eSel ? "bg-accent/20 text-t1" : "text-t2 hover:bg-t1/8 hover:text-t1", eHidden && "opacity-45")}
                 style={{ paddingLeft: 4 + (depth + 1) * 12 + 16 }}
-                onClick={(e) => ws.getState().select([id], e.shiftKey)}
+                onClick={(e) => ws.getState().select([id], e.shiftKey || hasPrimaryModifier(e))}
                 onDoubleClick={() => setRenaming(id)}
                 onContextMenu={(e) => {
                   e.preventDefault();

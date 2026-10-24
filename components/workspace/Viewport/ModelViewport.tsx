@@ -1,6 +1,42 @@
+/**
+ * components/workspace/Viewport/ModelViewport.tsx
+ *
+ * WHAT   The workspace canvas: the 3D isometric model or the 2D floor plan, drawn by one SVG renderer
+ *        (lib/scene/render.ts), with every pointer, touch, wheel and keyboard interaction on it: click to
+ *        select, Shift / ⌘ / Ctrl-click to add, a dragged window to box-select, orbit, pan, zoom, walkthrough,
+ *        the crosshair with dynamic input, the right-click menu, and two-finger pinch on touch screens.
+ *        Overlays (selection, stress, simulation, solar path, callouts, UCS icon, ViewCube, navigation bar,
+ *        section banner, viewport label) are layered on top.
+ * FOR    The centre of the workspace (Viewport/index.tsx). Camera and plan state live in the workspace store;
+ *        this component turns input into store updates. The SVG renderer can later be swapped for Three.js
+ *        behind this same boundary.
+ * OS     Left drag follows the navigation tool (default: orbit in 3D, pan in 2D); the middle button pans (Shift
+ *        + middle orbits in 3D); Space + drag pans, which is the only pan a trackpad-only Mac has in 3D; Shift
+ *        or ⌘ (Mac) / Ctrl (Windows, Linux) + drag draws a selection window. Control-click on a Mac is a right
+ *        click (context menu). A mouse wheel zooms, a trackpad scroll pans, a pinch zooms about the fingers
+ *        (Chromium ctrl+wheel, Safari gesture events, touch pointers); Settings → Display → Scroll gesture can
+ *        force zoom or pan (lib/input.ts).
+ * OS     Pointer capture is wrapped in capture() because it throws for pointers that are already gone (quick
+ *        taps, synthetic events).
+ * DEBUG  - A drag never ends: pointerup is missed when the OS cancels the pointer; cancelDrag() clears the
+ *          state on right-click, pointer cancel and pinch start.
+ *        - Scrolling zooms when it should pan (or the reverse): the wheel classifier in lib/input.ts decides
+ *          mouse vs trackpad; override it in Settings → Display.
+ *        - The page scrolls or zooms instead of the canvas: the wheel and gesture listeners are added with {
+ *          passive: false } in an effect so preventDefault works.
+ *        - Clicks select nothing: elements need a data-el attribute (set by the renderer); locked layers or
+ *          elements show an "is locked" toast instead.
+ *        - Crosshair or dynamic input stuck: updateCursor writes straight to refs (no React render) and is
+ *          throttled with requestAnimationFrame.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createWheelClassifier, interpretWheel } from "@/lib/input";
+import { getPlatform, hasPrimaryModifier, isMacSecondaryClick } from "@/lib/platform";
 import { materialUsage } from "@/lib/scene";
 import { makeProjector, normBearing, orbit, type Camera } from "@/lib/scene/camera";
 import { elementOutline, planCutFor, planLevelsFor, renderScene, type Tint } from "@/lib/scene/render";
@@ -22,6 +58,7 @@ import { SectionBanner } from "./SectionBanner";
 
 type DragMode = "orbit" | "pan" | "zoom" | "walk" | "box";
 
+/** The 3D / 2D canvas with all of its input handling. */
 export function ModelViewport() {
   const ws = useWsApi();
   const { ctx } = useRunner();
@@ -75,6 +112,13 @@ export function ModelViewport() {
   const boxRef = useRef<SVGRectElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [dragging, setDragging] = useState(false);
+  /** Space held over the viewport: the next drag pans (the only pan a trackpad-only Mac has in 3D) */
+  const [spacePan, setSpacePan] = useState(false);
+  const spaceRef = useRef(false);
+  const hovering = useRef(false);
+  /** active touch points and the two-finger pinch built from them */
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; cx: number; cy: number } | null>(null);
 
   useEffect(() => {
     const el = wrap.current;
@@ -82,6 +126,36 @@ export function ModelViewport() {
     const ro = new ResizeObserver(([e]) => setSize({ w: Math.round(e.contentRect.width), h: Math.round(e.contentRect.height) }));
     ro.observe(el);
     return () => ro.disconnect();
+  }, []);
+
+  /* Space + drag pans, as in most CAD and design tools. Only while the pointer is over the viewport and no text field has focus. */
+  useEffect(() => {
+    const typingIn = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+    };
+    const down = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || !hovering.current || typingIn(e.target)) return;
+      e.preventDefault(); // no page scroll, and no "click" on a focused button
+      if (e.repeat) return;
+      spaceRef.current = true;
+      setSpacePan(true);
+    };
+    const release = () => {
+      spaceRef.current = false;
+      setSpacePan(false);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === "Space") release();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", release);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", release);
+    };
   }, []);
 
   /* effective camera + projector */
@@ -181,7 +255,7 @@ export function ModelViewport() {
       if (!r) return;
       const x = clientX - r.left;
       const y = clientY - r.top;
-      const showCross = over && navTool === "select";
+      const showCross = over && navTool === "select" && !spaceRef.current;
       const frac = display.crosshairSize / 100;
       if (crossH.current && crossV.current && crossBox.current) {
         const hw = (size.w * frac) / 2;
@@ -224,22 +298,95 @@ export function ModelViewport() {
     [display.crosshairSize, size.w, size.h, navTool, is2d, proj, ws, dynOn, units.system, units.precision, toolPrompt],
   );
 
+  /** zoom by factor `f`, keeping the point under (mx, my) fixed */
+  const zoomAbout = useCallback(
+    (f: number, mx: number, my: number) => {
+      const s = ws.getState();
+      if (s.view === "2d") {
+        const z = clamp(s.plan.zoom * f, 0.4, 12);
+        const k = 1 - z / s.plan.zoom;
+        s.setPlan({ zoom: z, panX: s.plan.panX + (mx - (size.w / 2 + s.plan.panX)) * k, panY: s.plan.panY + (my - (size.h / 2 + s.plan.panY)) * k });
+      } else {
+        const z = clamp(s.camera.zoom * f, 0.3, 14);
+        const k = 1 - z / s.camera.zoom;
+        s.setCamera({ zoom: z, panX: s.camera.panX + (mx - (size.w / 2 + s.camera.panX)) * k, panY: s.camera.panY + (my - (size.h / 2 + s.camera.panY)) * k });
+      }
+    },
+    [ws, size.w, size.h],
+  );
+  const panBy = useCallback(
+    (dx: number, dy: number) => {
+      const s = ws.getState();
+      if (s.view === "2d") s.setPlan({ panX: s.plan.panX + dx, panY: s.plan.panY + dy });
+      else s.setCamera({ panX: s.camera.panX + dx, panY: s.camera.panY + dy });
+    },
+    [ws],
+  );
+
+  /** keep receiving this pointer's events outside the viewport; throws if the pointer is already gone (a quick tap) */
+  const capture = (e: React.PointerEvent<SVGSVGElement>) => {
+    try {
+      (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* pointer no longer active: nothing to capture */
+    }
+  };
+
+  /** abandon any drag in progress (right click, pointer cancelled by the OS, pinch started) */
+  const cancelDrag = () => {
+    drag.current = null;
+    setDragging(false);
+    if (boxRef.current) boxRef.current.style.visibility = "hidden";
+  };
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.button === 2) return;
-    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    const platform = getPlatform();
+    // macOS turns Control+click into a right click: the contextmenu event that follows opens our menu,
+    // and no pointerup would ever end a drag started here
+    if (isMacSecondaryClick(e, platform)) return;
+    // two fingers on a touch screen: pinch to zoom, drag to pan
+    if (e.pointerType === "touch") {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.current.size === 2) {
+        cancelDrag();
+        const [a, b] = [...touches.current.values()];
+        pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+        capture(e);
+        return;
+      }
+    }
+    capture(e);
+    // ⌘ on a Mac, Ctrl elsewhere: with Shift it draws a selection window and adds to the selection
+    const additive = e.shiftKey || hasPrimaryModifier(e, platform);
     let mode: DragMode;
     if (e.button === 1) mode = e.shiftKey && !is2d ? "orbit" : "pan";
-    else if (e.shiftKey || e.ctrlKey) mode = "box";
+    else if (spaceRef.current) mode = "pan";
+    else if (additive) mode = "box";
     else if (navTool === "pan") mode = "pan";
     else if (navTool === "zoom") mode = "zoom";
     else if (navTool === "walk" && !is2d) mode = "walk";
     else if (navTool === "orbit" && !is2d) mode = "orbit";
     else mode = is2d ? "pan" : "orbit";
-    drag.current = { mode, x: e.clientX, y: e.clientY, moved: false, el: pickEl(e.target), button: e.button, startCam: ws.getState().camera, startPlan: ws.getState().plan, shift: e.shiftKey };
+    drag.current = { mode, x: e.clientX, y: e.clientY, moved: false, el: pickEl(e.target), button: e.button, startCam: ws.getState().camera, startPlan: ws.getState().plan, shift: additive };
     if (e.button === 1) e.preventDefault();
   };
 
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === "touch" && touches.current.has(e.pointerId)) {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch.current && touches.current.size === 2) {
+        const [a, b] = [...touches.current.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        const cx = (a.x + b.x) / 2;
+        const cy = (a.y + b.y) / 2;
+        const r = svgRef.current!.getBoundingClientRect();
+        zoomAbout(dist / pinch.current.dist, cx - r.left, cy - r.top);
+        panBy(cx - pinch.current.cx, cy - pinch.current.cy);
+        pinch.current = { dist, cx, cy };
+        return;
+      }
+    }
     const d = drag.current;
     if (!d) {
       const id = pickEl(e.target);
@@ -291,6 +438,14 @@ export function ModelViewport() {
   };
 
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === "touch") {
+      touches.current.delete(e.pointerId);
+      if (pinch.current) {
+        // the pinch ends when the first finger lifts; the remaining finger must not start a click or drag
+        if (touches.current.size < 2) pinch.current = null;
+        return;
+      }
+    }
     const d = drag.current;
     drag.current = null;
     setDragging(false);
@@ -338,33 +493,49 @@ export function ModelViewport() {
     }
   };
 
-  /* wheel zoom around the cursor (needs a non-passive listener) */
+  /* Wheel, trackpad scroll and pinch (needs non-passive listeners so the page doesn't scroll or zoom).
+   * What a scroll does follows Settings → Display → Scroll gesture; pinch always zooms about the fingers. */
+  const scrollPref = display.scrollGesture;
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
+    const classify = createWheelClassifier();
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const s = ws.getState();
       const r = el.getBoundingClientRect();
-      const mx = e.clientX - r.left;
-      const my = e.clientY - r.top;
-      const f = Math.exp(-e.deltaY * 0.0016);
-      if (s.view === "2d") {
-        const z = clamp(s.plan.zoom * f, 0.4, 12);
-        const k = 1 - z / s.plan.zoom;
-        s.setPlan({ zoom: z, panX: s.plan.panX + (mx - (size.w / 2 + s.plan.panX)) * k, panY: s.plan.panY + (my - (size.h / 2 + s.plan.panY)) * k });
-      } else {
-        const z = clamp(s.camera.zoom * f, 0.3, 14);
-        const k = 1 - z / s.camera.zoom;
-        s.setCamera({ zoom: z, panX: s.camera.panX + (mx - (size.w / 2 + s.camera.panX)) * k, panY: s.camera.panY + (my - (size.h / 2 + s.camera.panY)) * k });
-      }
+      const out = interpretWheel(e as WheelEvent & { wheelDeltaY?: number }, scrollPref, classify(e as WheelEvent & { wheelDeltaY?: number }));
+      if (out.zoom !== 1) zoomAbout(out.zoom, e.clientX - r.left, e.clientY - r.top);
+      if (out.panX || out.panY) panBy(out.panX, out.panY);
+    };
+    // Safari reports trackpad pinch as non-standard gesture events instead of ctrl+wheel
+    type SafariGesture = Event & { scale: number; clientX: number; clientY: number };
+    let lastScale = 1;
+    const onGestureStart = (e: Event) => {
+      e.preventDefault();
+      lastScale = 1;
+    };
+    const onGestureChange = (e: Event) => {
+      e.preventDefault();
+      const g = e as SafariGesture;
+      const r = el.getBoundingClientRect();
+      zoomAbout(g.scale / lastScale, g.clientX - r.left, g.clientY - r.top);
+      lastScale = g.scale;
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [ws, size.w, size.h]);
+    el.addEventListener("gesturestart", onGestureStart);
+    el.addEventListener("gesturechange", onGestureChange);
+    el.addEventListener("gestureend", onGestureStart);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("gesturestart", onGestureStart);
+      el.removeEventListener("gesturechange", onGestureChange);
+      el.removeEventListener("gestureend", onGestureStart);
+    };
+  }, [scrollPref, zoomAbout, panBy]);
 
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    cancelDrag(); // the menu swallows the matching pointerup on some platforms
     const id = pickEl(e.target);
     const s = ws.getState();
     if (id && !s.selection.includes(id)) s.select([id]);
@@ -392,11 +563,20 @@ export function ModelViewport() {
         ref={svgRef}
         role="img"
         aria-label={is2d ? "2D floor plan" : "3D model viewport"}
-        className={`absolute inset-0 h-full w-full touch-none select-none ${navTool === "select" ? "cursor-crosshair-none" : navTool === "pan" ? "cursor-grab" : navTool === "orbit" ? "cursor-move" : navTool === "zoom" ? "cursor-zoom-in" : "cursor-move"}`}
+        className={`bs-keep-colors absolute inset-0 h-full w-full touch-none select-none ${spacePan ? (dragging ? "cursor-grabbing" : "cursor-grab") : navTool === "select" ? "cursor-crosshair-none" : navTool === "pan" ? "cursor-grab" : navTool === "orbit" ? "cursor-move" : navTool === "zoom" ? "cursor-zoom-in" : "cursor-move"}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={(e) => {
+          touches.current.delete(e.pointerId);
+          pinch.current = null;
+          cancelDrag();
+        }}
+        onPointerEnter={() => {
+          hovering.current = true;
+        }}
         onPointerLeave={() => {
+          hovering.current = false;
           if (!drag.current) {
             ws.getState().setHover(null);
             updateCursor(0, 0, false);

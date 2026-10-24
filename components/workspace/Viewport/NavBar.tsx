@@ -1,3 +1,14 @@
+/**
+ * components/workspace/Viewport/NavBar.tsx
+ *
+ * WHAT   The navigation bar on the right edge of the canvas: Select, Pan, Zoom, Orbit, Walkthrough and Zoom
+ *        Extents buttons. Orbit and Walkthrough are disabled in the 2D plan.
+ * FOR    Choosing the navigation tool (workspace `navTool`) that a plain left-drag uses in ModelViewport;
+ *        hidden by Settings → Display → Show navigation bar.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon, type IconKey } from "@/components/icons";
@@ -10,12 +21,13 @@ import { cn } from "@/lib/utils";
 
 const TOOLS: { id: NavTool; icon: IconKey; label: string; desc: string; cmd: string }[] = [
   { id: "select", icon: "pointer", label: "Select", desc: "Click to select, Shift+drag for a window", cmd: "SELECT" },
-  { id: "pan", icon: "hand", label: "Pan", desc: "Drag to pan. Middle mouse also pans", cmd: "PAN" },
-  { id: "zoom", icon: "zoomIn", label: "Zoom", desc: "Drag up or down to zoom. The wheel always zooms", cmd: "ZOOM" },
+  { id: "pan", icon: "hand", label: "Pan", desc: "Drag to pan. Middle mouse, or Space + drag, also pans", cmd: "PAN" },
+  { id: "zoom", icon: "zoomIn", label: "Zoom", desc: "Drag up or down to zoom. A mouse wheel or trackpad pinch also zooms", cmd: "ZOOM" },
   { id: "orbit", icon: "orbit", label: "Orbit", desc: "Drag to orbit the 3D model", cmd: "3DORBIT" },
   { id: "walk", icon: "walk", label: "Walkthrough", desc: "Drag to look around at eye level", cmd: "3DWALK" },
 ];
 
+/** The navigation toolbar; `onWalk` starts the walkthrough camera. */
 export function NavBar({ onWalk }: { onWalk: () => void }) {
   const ws = useWsApi();
   const tool = useWs((s) => s.navTool);

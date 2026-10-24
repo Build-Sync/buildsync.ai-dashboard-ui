@@ -1,3 +1,20 @@
+/**
+ * components/workspace/Palettes/index.tsx
+ *
+ * WHAT   The right-hand palette dock: a wrapping row of tab chips (Properties, Health, Compliance, Cost,
+ *        Comments, Issues, Simulation, Stress Test, Clash, AI Analysis, Council) with count badges, a title bar
+ *        and the body of the active palette. Results palettes end with the advisory footer.
+ * FOR    Choosing which palette is shown (workspace `panel`). META defines each palette's label, icon, tooltip
+ *        and command; BODY maps it to its component. The footer follows Settings → General → Advisory banner.
+ * DEBUG  - A palette tab is missing: it must be in PALETTE_IDS (lib/types.ts), META and BODY.
+ *        - A badge count looks wrong: useBadge counts failed checks, unresolved issues, clashes and unresolved
+ *          comments of the open project.
+ *        - The body keeps stale local state after a tab switch: the body is keyed by the panel id, so it
+ *          remounts.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { Icon, type IconKey } from "@/components/icons";
@@ -102,7 +119,7 @@ export function PaletteDock() {
         <Icon name={m.icon} size={13} className="text-accent" />
         <span className="label-xs !text-t1">{m.title}</span>
       </div>
-      <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto" data-testid="palette-body" key={panel}>
+      <div role="tabpanel" className="gutter-stable min-h-0 flex-1 overflow-y-auto" data-testid="palette-body" key={panel}>
         {BODY[panel]()}
       </div>
       {m.advisory && advisory && (

@@ -1,9 +1,27 @@
+/**
+ * components/settings/panes/Account.tsx
+ *
+ * WHAT   Settings → Account: profile (name, e-mail, avatar), seat with a Change-plan dialog, PE credentials,
+ *        billing (mock card and invoices), security (password, two-factor, sessions) and a danger zone (export
+ *        my data, delete account).
+ * FOR    `profile`, `seat` and `members` in the app store. Everything is mock: nothing is sent anywhere, and
+ *        the data export is a JSON file built in the browser. A PE licence of 4+ characters on a non-student
+ *        seat marks the account verified (selectVerified in lib/store/app-store.ts), which unlocks the
+ *        advisory-banner switch in Settings → General.
+ * DEBUG  - governmentPrice(population) = 7.90 × population^0.7, between $15K and $500K.
+ *        - Avatar: the preview is a blob: URL that is revoked when replaced or on unmount.
+ *        - Delete account only toasts; it asks for the word DELETE first.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { Modal } from "@/components/ui/Modal";
 import { Pill, Select, Switch } from "@/components/ui/controls";
+import { saveJson } from "@/lib/save-file";
 import { useApp, useAppApi } from "@/lib/store/app-provider";
 import { selectVerified } from "@/lib/store/app-store";
 import type { Seat } from "@/lib/types";
@@ -92,15 +110,7 @@ function ChangePlan({ onClose }: { onClose: () => void }) {
   );
 }
 
-function download(name: string, data: unknown) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
+/** The Settings → Account pane. */
 export function AccountPane() {
   const app = useAppApi();
   const profile = useApp((s) => s.profile);
@@ -287,7 +297,7 @@ export function AccountPane() {
       <Group title="Danger zone">
         <div className="rounded-xl border border-bad/40 p-4">
           <Row label="Export my data" help="Download your profile, settings and project list as JSON.">
-            <button className="btn" onClick={() => { download("buildsync-my-data.json", { profile: { name: profile.name, email: profile.email }, seat, settings: app.getState().settings, tabs: app.getState().tabs }); app.getState().toast("Data exported"); }}>
+            <button className="btn" onClick={() => { saveJson("buildsync-my-data.json", { profile: { name: profile.name, email: profile.email }, seat, settings: app.getState().settings, tabs: app.getState().tabs }); app.getState().toast("Data exported"); }}>
               <Icon name="download" size={13} /> Export
             </button>
           </Row>

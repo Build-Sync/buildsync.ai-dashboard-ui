@@ -1,3 +1,24 @@
+/**
+ * components/workspace/CommandLine/index.tsx
+ *
+ * WHAT   The command line at the bottom of the workspace: a short history log, suggestion chips, the input with
+ *        Tab completion and Up / Down recall of earlier inputs, controls (voice, attach a file, reference the
+ *        selection, clear context, AI history), pending agent proposals and the agent selector.
+ * FOR    Typing a known command (LINE, ZOOM, GRID …) runs it locally; anything else is sent to the active AI
+ *        agent together with the model context (useRunner().submit → runInput in lib/commands.ts). Agents only
+ *        propose edits; each proposal is a ProposalCard to accept or reject.
+ * OS     Enter and arrow keys that confirm an IME candidate are ignored (isComposingKey). Autocorrect,
+ *        autocapitalise and spell-check are off so macOS and iPadOS leave command names alone.
+ * DEBUG  - Typing does nothing: submit ignores empty text and is blocked while `cmdBusy` (an agent is
+ *          answering).
+ *        - Voice input is a mock: it fills in a sample command after 1.8 s; no microphone is used.
+ *        - Up / Down recall: the list is kept in component state and holds the last 40 entries.
+ *        - The input is focused when the workspace `cmdFocus` counter changes (setCmdInput with focus = true).
+ *          Ctrl+9 / ⌘9 (CMDLINE in lib/commands.ts) shows or hides the whole command line.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,6 +29,7 @@ import { Spinner } from "@/components/ui/controls";
 import { tip } from "@/components/ui/Tooltip";
 import { AGENT_META } from "@/lib/agents";
 import { COMMANDS } from "@/lib/commands";
+import { isComposingKey } from "@/lib/platform";
 import { useApp, useAppApi } from "@/lib/store/app-provider";
 import { useWs, useWsApi } from "@/lib/store/workspace-provider";
 import type { HistoryKind } from "@/lib/types";
@@ -35,6 +57,7 @@ const KIND_CLASS: Record<HistoryKind, string> = {
   info: "text-t1/90",
 };
 
+/** The bottom command line with history, input, controls and agent selector. */
 export function CommandLine() {
   const ws = useWsApi();
   const appApi = useAppApi();
@@ -183,6 +206,7 @@ export function CommandLine() {
             value={value}
             onChange={(e) => ws.getState().setCmdInput(e.target.value, false)}
             onKeyDown={(e) => {
+              if (isComposingKey(e)) return; // Enter / arrows confirm an IME candidate; they are not commands
               if (e.key === "Enter") {
                 e.preventDefault();
                 send();
@@ -208,6 +232,8 @@ export function CommandLine() {
             placeholder="Type a command (SECTION, 2D, STRESS, SETTINGS…) or ask BuildSync AI in plain English"
             className="mono h-7 w-full bg-transparent text-[0.75rem] text-t1 outline-none placeholder:text-t3"
             autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             spellCheck={false}
           />
         </div>

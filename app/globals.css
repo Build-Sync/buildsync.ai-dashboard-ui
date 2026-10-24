@@ -1,3 +1,26 @@
+/**
+ * app/globals.css
+ *
+ * WHAT   The global stylesheet: Tailwind v4 import, the design tokens (colours, sizes, fonts) as CSS
+ *        variables for the dark default and the light and high-contrast themes, the Tailwind theme
+ *        mapping, base element styles, small reusable component classes (.btn, .input, .pill, .kbd),
+ *        animations, and the OS-specific adjustments (font fallbacks, scrollbars, forced colours).
+ * FOR    Every screen. Components use Tailwind utilities that resolve to these variables, so a theme is
+ *        just a different set of variable values under [data-theme="…"] on <html>.
+ *
+ * CROSS-PLATFORM
+ *   - Font stacks fall back through each OS's system UI font (San Francisco, Segoe UI, Roboto/Noto).
+ *   - `scrollbar-gutter` keeps Windows/Linux classic scrollbars from shifting layout; macOS overlay
+ *     scrollbars are unaffected.
+ *   - `@media (forced-colors: active)` (Windows Contrast themes) restores borders and focus rings and
+ *     lets the drawing areas (.bs-keep-colors) keep their own colours.
+ *
+ * DEBUG  - Wrong colour: find the variable in :root / [data-theme] and check which theme is on <html>.
+ *        - Size scaling off: all sizes are rem; html font-size = 16px × --ui-scale (Settings → Display).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 @import "tailwindcss";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -6,8 +29,8 @@
    ────────────────────────────────────────────────────────────────────────── */
 :root {
   --ui-scale: 1;
-  --font-ui: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   --bg-app: #0d1015;
   --bg-viewport: #12161d;
@@ -46,7 +69,7 @@
 }
 
 :root[data-theme="light"] {
-  --font-ui: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-ui: "Inter Variable", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
   --bg-app: #fafaf6;
   --bg-viewport: #eef0f3;
   --bg-chrome: #ffffff;
@@ -124,6 +147,9 @@ html {
   font-size: calc(16px * var(--ui-scale));
   background: var(--bg-app);
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 html[data-theme="light"] {
   color-scheme: light;
@@ -136,7 +162,8 @@ body {
   font-family: var(--font-ui);
   font-size: 0.75rem; /* 12px — dense CAD chrome */
   line-height: 1.35;
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased; /* Safari / Chrome on macOS */
+  -moz-osx-font-smoothing: grayscale; /* Firefox on macOS */
   text-rendering: optimizeLegibility;
 }
 
@@ -187,6 +214,15 @@ textarea {
 }
 @utility accent-soft {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+/* reserve room for classic (Windows/Linux) scrollbars so panels don't jump sideways when one appears;
+   macOS overlay scrollbars take no space, so this changes nothing there */
+@utility gutter-stable {
+  scrollbar-gutter: stable;
+}
+/* drawing surfaces keep their own colours under Windows forced-colors (Contrast themes) */
+@utility bs-keep-colors {
+  forced-color-adjust: none;
 }
 
 @layer components {
@@ -281,5 +317,31 @@ textarea {
   .anim-pulse,
   .anim-march {
     animation: none;
+  }
+}
+
+/* ── Windows Contrast themes / forced colours ──────────────────────────────────────────────────────
+ * The browser replaces our colours with the user's system palette. Backgrounds and text are handled for
+ * us, but borders that rely on a subtle colour, accent-filled "pressed" states and focus rings need help. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+  .btn,
+  .input,
+  .pill,
+  .kbd {
+    border: 1px solid ButtonText;
+  }
+  .btn-primary {
+    background: Highlight;
+    color: HighlightText;
+  }
+  [aria-pressed="true"],
+  [aria-selected="true"],
+  [aria-checked="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }

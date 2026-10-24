@@ -1,9 +1,29 @@
+/**
+ * lib/settings.ts
+ *
+ * WHAT   The user settings: the Settings type (general, units, grid & snap, display, rendering, shortcuts, AI,
+ *        routing, MCP, notifications), DEFAULT_SETTINGS, ACCENTS, the notification events, and the helpers to
+ *        clone, merge stored values over the defaults, and compare settings.
+ * FOR    The app store keeps the saved copy and an editable draft (lib/store/app-store.ts); the Settings window
+ *        edits the draft. Only non-secret settings live here and are saved to localStorage (key bs.settings):
+ *        API keys never do.
+ * DEBUG  - A new setting is missing for returning users: mergeSettings() fills new keys from the defaults, so
+ *          add the default here.
+ *        - Settings do not persist: storage may be blocked (private window); the app then runs on defaults.
+ *        - Apply stays disabled: settingsEqual compares the draft with the saved copy by value.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 import { DEFAULT_ROUTING } from "./agents";
+import type { ScrollGesture } from "./input";
+import type { ThemeSetting } from "./theme";
 import type { AgentId, TaskKind, VisualStyle } from "./types";
 import type { DateFormat, MeasureSystem } from "./utils";
 
 /* User settings (spec §11). Non-secret only: API keys never live here. */
 
+/** Ids of the notification events users can switch on or off. */
 export type NotifEvent =
   | "issue-assigned"
   | "pe-review"
@@ -12,6 +32,7 @@ export type NotifEvent =
   | "agent-connection"
   | "weekly-digest";
 
+/** The notification events with their default in-app and e-mail state. */
 export const NOTIF_EVENTS: { id: NotifEvent; label: string; inApp: boolean; email: boolean }[] = [
   { id: "issue-assigned", label: "Issue assigned to me", inApp: true, email: true },
   { id: "pe-review", label: "PE review requested / completed", inApp: true, email: true },
@@ -21,8 +42,10 @@ export const NOTIF_EVENTS: { id: NotifEvent; label: string; inApp: boolean; emai
   { id: "weekly-digest", label: "Weekly project digest", inApp: false, email: true },
 ];
 
+/** Object-snap modes. */
 export type OsnapMode = "endpoint" | "midpoint" | "center" | "intersection" | "perpendicular" | "nearest";
 
+/** All user settings. */
 export interface Settings {
   general: {
     language: "en" | "fr" | "es" | "ja";
@@ -52,10 +75,12 @@ export interface Settings {
     dynInput: boolean;
   };
   display: {
-    theme: "dark" | "light" | "hc";
+    theme: ThemeSetting;
     accent: string;
     uiScale: 90 | 100 | 110 | 125;
     crosshairSize: number;
+    /** what the scroll wheel / two-finger scroll does in the viewport (auto = zoom for a mouse wheel, pan for a trackpad) */
+    scrollGesture: ScrollGesture;
     showViewCube: boolean;
     showNavBar: boolean;
     showUcs: boolean;
@@ -90,8 +115,10 @@ export interface Settings {
   notifications: Record<NotifEvent, { inApp: boolean; email: boolean }>;
 }
 
+/** The preset accent colours. */
 export const ACCENTS = ["#4C8DFF", "#3ECF8E", "#F0A940", "#EF5B5B", "#8B6CF0", "#2CC4D6", "#E86AB5"] as const;
 
+/** Settings for a new user. */
 export const DEFAULT_SETTINGS: Settings = {
   general: {
     language: "en",
@@ -125,6 +152,7 @@ export const DEFAULT_SETTINGS: Settings = {
     accent: "#4C8DFF",
     uiScale: 100,
     crosshairSize: 100,
+    scrollGesture: "auto",
     showViewCube: true,
     showNavBar: true,
     showUcs: true,
@@ -153,6 +181,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notifications: Object.fromEntries(NOTIF_EVENTS.map((e) => [e.id, { inApp: e.inApp, email: e.email }])) as Settings["notifications"],
 };
 
+/** Deep copy of settings (used to start a draft). */
 export function cloneSettings(s: Settings): Settings {
   return JSON.parse(JSON.stringify(s)) as Settings;
 }
@@ -177,8 +206,10 @@ export function mergeSettings(stored: unknown): Settings {
   return base;
 }
 
+/** True when two settings objects hold the same values. */
 export function settingsEqual(a: Settings, b: Settings): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/** localStorage key under which the settings are saved. */
 export const SETTINGS_STORAGE_KEY = "bs.settings";

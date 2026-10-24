@@ -1,3 +1,19 @@
+/**
+ * components/workspace/Viewport/SheetView.tsx
+ *
+ * WHAT   A paper-space layout sheet: the same renderer as the model but with a fixed camera for each sheet kind
+ *        (floor plan, section, structural plan, elevation) drawn inside a title block with north arrow and
+ *        annotations, on a white sheet.
+ * FOR    The layout tabs under the canvas (A-101 Floor Plan, A-201 Section, S-301 Structural). Sheets are
+ *        defined in the workspace store; the drawing area is DRAW inside a SHEET_W x SHEET_H page.
+ * DEBUG  - A sheet shows a dark drawing: the PAPER style overrides --vp-ink and --bg-viewport so the SVG uses
+ *          ink on white; elements with fixed colours need bs-keep-colors so Windows high-contrast mode does not
+ *          recolour them.
+ *        - Wrong view on a sheet: the camera is built per Sheet['kind'] in the useMemo at the top of SheetView.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useMemo, type CSSProperties } from "react";
@@ -29,6 +45,7 @@ const SUBTITLE: Record<Sheet["kind"], string> = {
   elevation: "SOUTH ELEVATION",
 };
 
+/** Draws one paper-space sheet. */
 export function SheetView({ sheet }: { sheet: Sheet }) {
   const scene = useScene();
   const project = useWs((s) => s.project);
@@ -73,7 +90,7 @@ export function SheetView({ sheet }: { sheet: Sheet }) {
 
   return (
     <div className="grid min-h-0 flex-1 place-items-center overflow-auto bg-[#2a2f39] p-4" data-testid="sheet-view">
-      <svg viewBox={`0 0 ${SHEET_W} ${SHEET_H}`} className="max-h-full max-w-full bg-white shadow-pop" style={{ ...PAPER, aspectRatio: `${SHEET_W} / ${SHEET_H}`, width: "min(100%, 1100px)" }} role="img" aria-label={`Sheet ${sheet.name}`}>
+      <svg viewBox={`0 0 ${SHEET_W} ${SHEET_H}`} className="bs-keep-colors max-h-full max-w-full bg-white shadow-pop" style={{ ...PAPER, aspectRatio: `${SHEET_W} / ${SHEET_H}`, width: "min(100%, 1100px)" }} role="img" aria-label={`Sheet ${sheet.name}`}>
         <ViewportDefs />
         <rect x={10} y={10} width={SHEET_W - 20} height={SHEET_H - 20} fill="none" stroke="#1b2330" strokeWidth={1.5} />
         <clipPath id="sheet-clip">

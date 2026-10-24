@@ -1,3 +1,19 @@
+/**
+ * components/workspace/Ribbon/RibbonPanels.tsx
+ *
+ * WHAT   Renders the active ribbon tab's panels. Panels that do not fit the window width fold into one button
+ *        each (right-most first), and the button opens the full panel as a flyout. An off-screen Measurer draws
+ *        every panel expanded once to learn the real widths. Vertical wheel scrolling over the ribbon scrolls
+ *        it sideways.
+ * FOR    The strip under the ribbon tabs. Buttons call run(command) from useRunner; their accent-fill state
+ *        comes from isActive(), which reads the workspace state.
+ * DEBUG  - A button is lit or dark wrongly: isActive() interprets the item.active rules from ribbon.config.ts.
+ *        - A panel is collapsed when there is room: see fit.ts (measured vs estimated widths).
+ *        - The Measurer stays mounted: it is shown only until the widths for the current tab / look are cached.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -6,6 +22,7 @@ import { anchorOf, type Anchor } from "@/components/ui/Menu";
 import { tip } from "@/components/ui/Tooltip";
 import { useApp } from "@/lib/store/app-provider";
 import { selectEffective } from "@/lib/store/app-store";
+import { useResolvedTheme } from "@/lib/use-theme";
 import { useWsShallow } from "@/lib/store/workspace-provider";
 import type { WsState } from "@/lib/store/workspace-store";
 import { cn } from "@/lib/utils";
@@ -144,6 +161,7 @@ function Measurer({ tab, cacheKey, ...rest }: { tab: RibbonTab; cacheKey: string
   );
 }
 
+/** The ribbon strip for the current tab, with width-based panel collapse. */
 export const RibbonPanels = memo(function RibbonPanels() {
   const { run } = useRunner();
   const style = useEffectiveStyle();
@@ -164,10 +182,9 @@ export const RibbonPanels = memo(function RibbonPanels() {
     activeTool: s.activeTool,
   }));
   // theme and UI scale change text widths, so cached panel widths are only valid for one look
-  const look = useApp((a) => {
-    const d = selectEffective(a).display;
-    return `${d.theme}|${d.uiScale}`;
-  });
+  const themeSetting = useApp((a) => selectEffective(a).display.theme);
+  const uiScale = useApp((a) => selectEffective(a).display.uiScale);
+  const look = `${useResolvedTheme(themeSetting)}|${uiScale}`;
   const m = useRibbonMetrics();
   const rootRef = useRef<HTMLDivElement>(null);
   const tab = RIBBON_BY_ID[s.tab];

@@ -1,3 +1,19 @@
+/**
+ * components/workspace/ModelExplorer/index.tsx
+ *
+ * WHAT   The left Model Explorer palette: four tabs, Model (the project tree), Layers, Levels and Library. All
+ *        four tabs stay mounted and are only hidden, so the tree's expanded and rename state survives a tab
+ *        switch.
+ * FOR    Navigating and organising the model. The active tab is the workspace `explorer` state; the width comes
+ *        from the --w-explorer CSS variable (app/globals.css).
+ * DEBUG  - A tab is blank: check the workspace `explorer` value and that the tab component renders data for
+ *          this project.
+ *        - The scroll area jumps when a scrollbar appears: it uses `gutter-stable` to reserve the scrollbar
+ *          space (classic scrollbars on Windows and Linux).
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { tip } from "@/components/ui/Tooltip";
@@ -40,7 +56,7 @@ export function ModelExplorer() {
           </button>
         ))}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="gutter-stable min-h-0 flex-1 overflow-y-auto">
         <div hidden={tab !== "model"}>
           <ModelTree />
         </div>

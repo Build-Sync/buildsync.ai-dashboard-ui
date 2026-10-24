@@ -1,3 +1,21 @@
+/**
+ * components/workspace/Modals/ReviewModals.tsx
+ *
+ * WHAT   Review and collaboration dialogs: PE sign-off (review queue → sign → audit trail), Approvals, Door /
+ *        window schedule, Quantity take-off, Prompt to Plan and Share.
+ * FOR    Opened through the workspace modal state (Modals/index.tsx). PE sign-off keeps AI output advisory
+ *        until a licensed PE signs (spec section 6). The schedule and take-off tables can be saved as CSV
+ *        (lib/save-file.ts); Prompt to Plan creates a new project from a text description (mock generator in
+ *        lib/services/analysis.ts).
+ * DEBUG  - Sign digitally is disabled: the agreement box must be ticked and the licence number needs at least 4
+ *          characters.
+ *        - The audit trail is empty: entries are added by peAdvance in the workspace store.
+ *        - Prompt to Plan does nothing in the demo: it opens the Start-free dialog instead of creating a
+ *          project.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useMemo, useState } from "react";
@@ -6,6 +24,7 @@ import { Icon } from "@/components/icons";
 import { InviteDialog, ROLE_LABEL, ROLE_OPTIONS } from "@/components/shared/InviteDialog";
 import { Modal } from "@/components/ui/Modal";
 import { Pill, Select, Spinner } from "@/components/ui/controls";
+import { saveCsv } from "@/lib/save-file";
 import { elementDetails } from "@/lib/scene";
 import { generatePlan, type GeneratedPlan } from "@/lib/services/analysis";
 import { planProjectId } from "@/lib/services/projects";
@@ -169,16 +188,6 @@ export function ApprovalsModal() {
 }
 
 /* ── generated tables ─────────────────────────────────────────────────── */
-function download(name: string, rows: string[][]) {
-  const csv = rows.map((r) => r.map((c) => `"${c.replaceAll('"', '""')}"`).join(",")).join("\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export function ScheduleModal() {
   const ws = useWsApi();
   const scene = useScene();
@@ -203,7 +212,7 @@ export function ScheduleModal() {
       onClose={() => ws.getState().closeModal()}
       width="44rem"
       footer={
-        <button className="btn" onClick={() => download(`${tab.toLowerCase()}-schedule.csv`, [head, ...rows])}>
+        <button className="btn" onClick={() => saveCsv(`${tab.toLowerCase()}-schedule.csv`, [head, ...rows])}>
           <Icon name="download" size={13} /> Export CSV
         </button>
       }
@@ -245,6 +254,7 @@ export function ScheduleModal() {
   );
 }
 
+/** Quantity take-off table, with CSV download. */
 export function QtoModal() {
   const ws = useWsApi();
   const scene = useScene();
@@ -287,7 +297,7 @@ export function QtoModal() {
       onClose={() => ws.getState().closeModal()}
       width="40rem"
       footer={
-        <button className="btn" onClick={() => download("quantity-takeoff.csv", [head, ...rows])}>
+        <button className="btn" onClick={() => saveCsv("quantity-takeoff.csv", [head, ...rows])}>
           <Icon name="download" size={13} /> Export CSV
         </button>
       }

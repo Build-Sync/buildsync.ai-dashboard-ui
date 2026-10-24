@@ -1,8 +1,30 @@
+/**
+ * components/workspace/SearchBox.tsx
+ *
+ * WHAT   The app-bar search box: fuzzy search over commands, settings and model elements with arrow keys, Enter
+ *        to run the highlighted result and Esc to close. With no match, Enter sends the text to the command
+ *        line / AI agent.
+ * FOR    Reaching anything without knowing where it lives. Results come from searchAll in lib/search.ts; Ctrl+K
+ *        (⌘K on a Mac) focuses the box through the workspace `searchFocus` counter.
+ * OS     Enter or arrows that confirm an IME candidate (Japanese, Chinese, Korean input) are ignored
+ *        (isComposingKey). Autocorrect, autocapitalise and spell-check are off so macOS and iPadOS do not
+ *        rewrite command names.
+ * DEBUG  - Wrong result runs: choose(idx) uses the highlighted index; hover also sets it.
+ *        - The list stays open: closing relies on a pointerdown listener in the capture phase on `box`.
+ *        - No results for a command or setting: the index in lib/search.ts is built from the ribbon
+ *          (ribbon.config.ts), COMMANDS (lib/commands.ts) and SETTINGS_PAGES / SETTINGS_ITEMS
+ *          (lib/settings-pages.ts); add it to the right list.
+ *
+ * Author: Giordano Bertin-Maurice
+ * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
+import { Kbd } from "@/components/ui/Kbd";
 import { runInput } from "@/lib/commands";
+import { isComposingKey } from "@/lib/platform";
 import { SEARCH_SUGGESTIONS, searchAll } from "@/lib/search";
 import { useWs } from "@/lib/store/workspace-provider";
 import { cn } from "@/lib/utils";
@@ -59,6 +81,10 @@ export function SearchBox() {
           aria-label="Search commands and settings"
           value={q}
           placeholder="Search commands…"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQ(e.target.value);
@@ -66,6 +92,7 @@ export function SearchBox() {
             setOpen(true);
           }}
           onKeyDown={(e) => {
+            if (isComposingKey(e)) return; // confirming an IME candidate with Enter must not run the result
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setIdx((i) => Math.min(i + 1, Math.max(list.length - 1, 0)));
@@ -82,7 +109,7 @@ export function SearchBox() {
           }}
           className="min-w-0 flex-1 bg-transparent text-[0.75rem] text-t1 outline-none placeholder:text-t3"
         />
-        <span className="kbd hidden xl:inline">Ctrl K</span>
+        <Kbd combo="Ctrl+K" className="hidden xl:inline" />
       </div>
       {open && (
         <div id="bs-search-list" role="listbox" className="anim-pop absolute right-0 top-7 z-[80] w-[22rem] overflow-hidden rounded-lg border border-line bg-chrome py-1 shadow-pop">
