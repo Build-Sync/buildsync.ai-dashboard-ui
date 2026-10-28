@@ -19,14 +19,17 @@
 /* Domain types for the BuildSync AI workspace (spec §14, extended). */
 
 /* ── URL-mirrored workspace state ─────────────────────────────────────── */
+/** The ribbon tabs in the order they show: the order you work in, from drawing to delivering (create → bring in →
+ *  services → document → look → check → ask AI → share → set up). */
 export const RIBBON_TAB_IDS = [
   "home",
   "insert",
+  "systems",
   "annotate",
-  "analyze",
-  "collaborate",
-  "ai",
   "view",
+  "analyze",
+  "ai",
+  "collaborate",
   "manage",
 ] as const;
 /** Id of a ribbon tab. */
@@ -45,12 +48,15 @@ export const PALETTE_IDS = [
   "clash",
   "ai-analysis",
   "council",
+  "versions",
+  "site",
+  "links",
 ] as const;
 /** Id of a right-hand palette. */
 export type PaletteId = (typeof PALETTE_IDS)[number];
 
 /** Ids of the Model Explorer tabs. */
-export const EXPLORER_IDS = ["model", "layers", "levels", "library"] as const;
+export const EXPLORER_IDS = ["model", "views", "layers", "levels", "library"] as const;
 /** Id of a Model Explorer tab. */
 export type ExplorerId = (typeof EXPLORER_IDS)[number];
 
@@ -112,6 +118,7 @@ export interface Level {
 export const LAYER_IDS = [
   "topography",
   "site",
+  "utilities",
   "foundation",
   "walls",
   "roof",
@@ -121,8 +128,11 @@ export const LAYER_IDS = [
   "fire",
   "interior",
   "landscape",
+  "civil",
   "furniture",
   "callouts",
+  "drafting",
+  "annotation",
 ] as const;
 /** Id of a model layer. */
 export type LayerId = (typeof LAYER_IDS)[number];
@@ -267,7 +277,7 @@ export interface HealthModel extends HealthSnapshot {
 }
 
 /** Which 3D scene a project uses. */
-export type SceneKind = "residence" | "clinic" | "blank";
+export type SceneKind = "residence" | "cottage" | "clinic" | "blank";
 
 /**
  * Everything about one project: details, levels, layers, checks, issues, clashes, cost, schedule, health
@@ -295,7 +305,60 @@ export interface Project {
   comments: Comment[];
   /** ISO date construction begins; the schedule's day 0 */
   startDate: string;
-  versions: { id: string; label: string; at: string; by: string }[];
+  versions: VersionRecord[];
+  /** where the site is on the earth and its property line (lib/geo.ts); none until it is placed on the map */
+  site?: import("./geo").SiteGeo;
+  /** other projects drawn here on the same parcel, kept separate and live (lib/links.ts) */
+  links?: import("./links").ProjectLink[];
+  /** frozen copies of other projects made part of this one (lib/links.ts) */
+  merged?: import("./links").MergedBlock[];
+  /** an imported ground survey: the elevation grid and its contours, which replace the sample's (lib/importers.ts) */
+  terrain?: ProjectTerrain;
+  /** the soil report's key values (Insert → Soil Data) */
+  soil?: SoilReport;
+  /** the kind of ground the site has (lib/ground.ts): its look in 3D and its presumptive soil values; lawn when unset */
+  ground?: import("./ground").GroundType;
+}
+
+/** A ground surface imported from a survey, a terrain file or a drone point cloud. */
+export interface ProjectTerrain {
+  /** where it came from: the file name and what it held */
+  source: string;
+  points: number;
+  interval: number;
+  grid: import("./importers").ElevGrid;
+  contours: import("./scene/types").Contour[];
+  /** height above sea level of the ground at the building, ft (ground from public elevation data) */
+  seaLevel?: number;
+}
+
+/** The numbers of a geotechnical (soil) report that the design needs. */
+export interface SoilReport {
+  file: string;
+  /** allowable bearing pressure, psf */
+  bearing: number;
+  /** seismic site class A–F */
+  siteClass: string;
+  /** depth to groundwater, ft */
+  waterTable: number;
+  /** percolation rate, minutes per inch (for a septic drain field) */
+  perc: number;
+  notes: string;
+}
+
+/**
+ * One entry of the version history. Sample history has only a label, a date text and an author; versions saved by
+ * the user also have `ts` (when), a summary of what changed, and a snapshot that Restore puts back.
+ */
+export interface VersionRecord {
+  id: string;
+  label: string;
+  /** date text of sample history; saved versions use `ts` */
+  at: string;
+  by: string;
+  ts?: number;
+  summary?: string;
+  snapshot?: import("./draw/types").SavedWork;
 }
 
 /** A project listed in the recent-projects lists. */

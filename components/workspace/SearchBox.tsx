@@ -78,7 +78,7 @@ export function SearchBox() {
           role="combobox"
           aria-expanded={open}
           aria-controls="bs-search-list"
-          aria-label="Search commands and settings"
+          aria-label="Search Commands and Settings"
           value={q}
           placeholder="Search commands…"
           autoComplete="off"

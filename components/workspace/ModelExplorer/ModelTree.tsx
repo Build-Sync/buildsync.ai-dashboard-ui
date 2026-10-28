@@ -10,8 +10,11 @@
  * OS     The add-to-selection modifier is Shift or the platform's primary key (hasPrimaryModifier in
  *        lib/platform.ts); on a Mac, Control-click opens the context menu instead.
  * DEBUG  - A row is dim: all of its elements are hidden, or its layer is switched off.
+ *        - Expanding a row jumps the list to the top: rows must stay a plain function (row()), not a component
+ *          declared inside ModelTree, or React rebuilds every row on each render.
  *        - The eye of a category row that is tied to a layer switches that layer; the eye of any other row
- *          hides or shows its elements.
+ *          hides or shows its elements. The lock works the same way (a layer row locks the layer), and on a row
+ *          with no elements of its own (the project, MEP) both act on every row under it.
  *        - The tree does not refresh after a project change: it is memoised on the scene, project name and id.
  *
  * Author: Giordano Bertin-Maurice
@@ -19,7 +22,7 @@
  */
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { Menu, MenuItem, MenuSep, type Anchor } from "@/components/ui/Menu";
 import { tip } from "@/components/ui/Tooltip";
@@ -62,9 +65,12 @@ export function ModelTree() {
     if (!ids.length) return (n.children ?? []).some((c) => nodeVisible(c));
     return ids.some((id) => !hiddenSet.has(id));
   };
-  const nodeLocked = (n: TreeNode) => {
+  const layerLocked = (id?: string) => (id ? layers.find((l) => l.id === id)?.locked === true : false);
+  const nodeLocked = (n: TreeNode): boolean => {
+    if (n.layer && !n.elementIds?.length) return layerLocked(n.layer);
     const ids = nodeIds(n);
-    return ids.length > 0 && ids.every((id) => lockedSet.has(id));
+    if (!ids.length) return !!n.children?.length && n.children.every((c) => nodeLocked(c));
+    return ids.every((id) => lockedSet.has(id));
   };
 
   const toggleVisible = (n: TreeNode): void => {
@@ -74,9 +80,16 @@ export function ModelTree() {
     if (ids.length) s.setHidden(ids, nodeVisible(n));
     else (n.children ?? []).forEach((c) => toggleVisible(c));
   };
-  const toggleLock = (n: TreeNode) => {
+  // mirrors toggleVisible: a layer row locks its layer, a row without elements of its own (project, MEP) locks its children
+  const toggleLock = (n: TreeNode, lock = !nodeLocked(n)): void => {
+    const s = ws.getState();
+    if (n.layer && !n.elementIds?.length) {
+      if (layerLocked(n.layer) !== lock) s.toggleLayerLock(n.layer as never);
+      return;
+    }
     const ids = nodeIds(n);
-    if (ids.length) ws.getState().setLocked(ids, !nodeLocked(n));
+    if (ids.length) s.setLocked(ids, lock);
+    else (n.children ?? []).forEach((c) => toggleLock(c, lock));
   };
   const selectNode = (n: TreeNode, additive: boolean) => {
     const ids = nodeIds(n);
@@ -85,7 +98,9 @@ export function ModelTree() {
 
   const label = (n: TreeNode) => renames[n.id] ?? n.label;
 
-  const Row = ({ n, depth }: { n: TreeNode; depth: number }) => {
+  // a plain function, not a component: a component made inside this render would be a new type on every render,
+  // so React would rebuild the whole tree on each expand / collapse and the scroll would jump back to the top
+  const row = (n: TreeNode, depth: number): ReactNode => {
     const hasKids = !!n.children?.length || (n.kind === "category" && !n.layer && (n.elementIds?.length ?? 0) > 0);
     const expanded = isOpen(n);
     const ids = nodeIds(n);
@@ -147,7 +162,7 @@ export function ModelTree() {
             <Icon name={lock ? "lock" : "unlock"} size={12} />
           </button>
         </div>
-        {expanded && n.children?.map((c) => <Row key={c.id} n={c} depth={depth + 1} />)}
+        {expanded && n.children?.map((c) => <Fragment key={c.id}>{row(c, depth + 1)}</Fragment>)}
         {expanded && !n.children && n.kind === "category" && !n.layer &&
           (n.elementIds ?? []).slice(0, 80).map((id) => {
             const el = scene.elementById[id];
@@ -195,18 +210,18 @@ export function ModelTree() {
   const ids = m ? nodeIds(m) : [];
 
   return (
-    <div role="tree" aria-label="Model tree" className="py-1" data-testid="model-tree">
+    <div role="tree" aria-label="Model Tree" className="py-1" data-testid="model-tree">
       {tree.map((n) => (
-        <Row key={n.id} n={n} depth={0} />
+        <Fragment key={n.id}>{row(n, 0)}</Fragment>
       ))}
-      <Menu anchor={menu?.anchor ?? null} onClose={close} label="Tree item menu" width="12rem">
+      <Menu anchor={menu?.anchor ?? null} onClose={close} label="Tree Item Menu" width="12rem">
         <MenuItem label="Select" icon="pointer" disabled={!ids.length} onClick={() => ws.getState().select(ids)} onClose={close} />
         <MenuItem label="Isolate" icon="isolate" disabled={!ids.length} onClick={() => ws.getState().isolate(ids)} onClose={close} />
         <MenuItem label="Hide" icon="hide" disabled={!ids.length} onClick={() => ws.getState().setHidden(ids, true)} onClose={close} />
-        <MenuItem label="Show all" icon="showall" onClick={() => ws.getState().showAll()} onClose={close} />
+        <MenuItem label="Show All" icon="showall" onClick={() => ws.getState().showAll()} onClose={close} />
         <MenuSep />
         <MenuItem label="Rename" icon="pencil" onClick={() => m && setRenaming(m.id)} onClose={close} />
-        <MenuItem label="Zoom to" icon="zoomext" disabled={!ids.length} onClick={() => ws.getState().focusElements(ids.slice(0, 40))} onClose={close} />
+        <MenuItem label="Zoom To" icon="zoomext" disabled={!ids.length} onClick={() => ws.getState().focusElements(ids.slice(0, 40))} onClose={close} />
       </Menu>
     </div>
   );

@@ -34,12 +34,12 @@ export type NotifEvent =
 
 /** The notification events with their default in-app and e-mail state. */
 export const NOTIF_EVENTS: { id: NotifEvent; label: string; inApp: boolean; email: boolean }[] = [
-  { id: "issue-assigned", label: "Issue assigned to me", inApp: true, email: true },
-  { id: "pe-review", label: "PE review requested / completed", inApp: true, email: true },
-  { id: "mention", label: "Comment mention", inApp: true, email: true },
-  { id: "analysis-done", label: "Simulation / analysis finished", inApp: true, email: true },
-  { id: "agent-connection", label: "Agent connected / disconnected", inApp: true, email: true },
-  { id: "weekly-digest", label: "Weekly project digest", inApp: false, email: true },
+  { id: "issue-assigned", label: "Issue Assigned to Me", inApp: true, email: true },
+  { id: "pe-review", label: "PE Review Requested / Completed", inApp: true, email: true },
+  { id: "mention", label: "Comment Mention", inApp: true, email: true },
+  { id: "analysis-done", label: "Simulation / Analysis Finished", inApp: true, email: true },
+  { id: "agent-connection", label: "Agent Connected / Disconnected", inApp: true, email: true },
+  { id: "weekly-digest", label: "Weekly Project Digest", inApp: false, email: true },
 ];
 
 /** Object-snap modes. */
@@ -193,11 +193,15 @@ export function mergeSettings(stored: unknown): Settings {
     for (const key of Object.keys(src)) {
       const sv = src[key];
       const tv = target[key];
+      // the user's shortcut and alias maps are free-form (one entry per command they changed): keep every entry,
+      // or every remap would be lost on reload (the defaults hold none to walk into)
+      if ((key === "aliases" || key === "keys") && sv && typeof sv === "object" && !Array.isArray(sv)) {
+        target[key] = Object.fromEntries(Object.entries(sv as Record<string, unknown>).filter(([, v]) => typeof v === "string"));
+        continue;
+      }
       if (sv && typeof sv === "object" && !Array.isArray(sv) && tv && typeof tv === "object" && !Array.isArray(tv)) {
         walk(tv as Record<string, unknown>, sv as Record<string, unknown>);
       } else if (sv !== undefined && key in target) {
-        target[key] = sv;
-      } else if (key === "aliases" || key === "keys") {
         target[key] = sv;
       }
     }

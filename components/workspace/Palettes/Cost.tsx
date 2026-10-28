@@ -35,7 +35,7 @@ export function Cost() {
   const metrics = useMemo(() => (win ? windowMetrics(sched, project, win) : null), [win, sched, project]);
 
   if (!c.total)
-    return <EmptyState icon="cost" title="No cost model yet" hint="Draw a plan or use Prompt to Plan and BuildSync will take off quantities and price them." />;
+    return <EmptyState icon="cost" title="No Cost Model Yet" hint="Draw a plan or use Prompt to Plan and BuildSync will take off quantities and price them." />;
 
   const split = [
     { k: "Hard", v: c.hard, color: "var(--accent)" },
@@ -61,7 +61,7 @@ export function Cost() {
       {win && metrics && (
         <div className="border-b border-soft bg-accent/10 px-3 py-2.5" data-testid="cost-window">
           <div className="flex items-center justify-between">
-            <span className="label-xs !text-accent">Timeline window</span>
+            <span className="label-xs !text-accent">Timeline Window</span>
             <button className="text-[0.6875rem] text-t2 hover:text-t1" onClick={() => ws.getState().clearWindow()}>
               Clear
             </button>
@@ -70,7 +70,7 @@ export function Cost() {
             Day {win.from} – {win.to} · {dayLabel(project, win.from)} → {dayLabel(project, win.to)}
           </div>
           <div className="mt-1.5 flex items-baseline justify-between">
-            <span className="text-[0.75rem] text-t2">Spent so far</span>
+            <span className="text-[0.75rem] text-t2">Spent So Far</span>
             <span className="mono text-[0.9375rem] font-semibold text-t1">{money(metrics.spent)}</span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
@@ -98,7 +98,7 @@ export function Cost() {
         </ul>
       </Section>
 
-      <Section title="Top materials">
+      <Section title="Top Materials">
         <ul className="space-y-2">
           {c.materials.map((m) => (
             <li key={m.name}>
@@ -138,13 +138,13 @@ export function Cost() {
         {metrics && (
           <p className="mt-2 flex items-center gap-1.5 text-[0.6875rem] text-t2">
             <Icon name="workforce" size={12} className="text-accent" />
-            Crew on site at day {win!.to}: <b className="mono text-t1">{metrics.crew}</b>
+            Crew on Site at Day {win!.to}: <b className="mono text-t1">{metrics.crew}</b>
           </p>
         )}
       </Section>
 
       {metrics && metrics.materials.length > 0 && (
-        <Section title="Materials used in window">
+        <Section title="Materials Used in Window">
           <ul className="space-y-1">
             {metrics.materials.slice(0, 8).map((m) => (
               <li key={m.name} className="flex justify-between text-[0.75rem]">

@@ -1,0 +1,69 @@
+# .github/workflows/ci.yml
+#
+# WHAT   Continuous integration on Linux, macOS and Windows. On each of the three: install, the portability
+#        check (import case, line ends, shell-specific npm scripts), typecheck, lint, unit tests and a production
+#        build. Then, on Linux, every browser suite (routing, workspace, tools, layout, site, buttons, platform)
+#        against the production build, with Playwright's Chromium.
+# FOR    Proof that the app builds and runs on all three systems, Linux included, on every push and pull request.
+# DEBUG  - Passes on Windows / macOS but fails on Linux: usually a file-name case mismatch; `npm run
+#          check:portable` names it.
+#        - The browser job cannot find Chromium: `npx playwright-core install --with-deps chromium` installs it
+#          and the system libraries it needs on Ubuntu.
+#        - Screenshots of a failing browser run are uploaded as the "e2e-shots" artifact.
+#
+# Author: Giordano Bertin-Maurice
+# Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    name: Checks (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:portable
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  e2e-linux:
+    name: Browser tests (Linux)
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run build
+      - name: Start the app
+        run: |
+          nohup npm start -- -p 3000 > app.log 2>&1 &
+          node scripts/wait-for.mjs http://localhost:3000/demo 120
+      - run: npm run e2e -- --base=http://localhost:3000
+      - if: failure()
+        run: cat app.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shots
+          path: e2e/.shots
+          if-no-files-found: ignore

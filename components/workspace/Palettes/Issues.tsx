@@ -36,7 +36,7 @@ export function Issues() {
     <div data-testid="palette-issues">
       <div className="border-b border-soft p-2.5">
         <div className="flex gap-1.5">
-          <input aria-label="New issue title" className="input" placeholder={selection[0] ? `New issue on ${selection[0]}…` : "New issue…"} value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && title.trim()) { ws.getState().addIssue(title.trim(), selection[0]); setTitle(""); } }} />
+          <input aria-label="New Issue Title" className="input" placeholder={selection[0] ? `New issue on ${selection[0]}…` : "New issue…"} value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && title.trim()) { ws.getState().addIssue(title.trim(), selection[0]); setTitle(""); } }} />
           <button className="btn btn-primary h-7 px-2.5 text-[0.6875rem]" disabled={!title.trim()} onClick={() => { ws.getState().addIssue(title.trim(), selection[0]); setTitle(""); }}>
             Add
           </button>
@@ -50,12 +50,12 @@ export function Issues() {
         </div>
       </div>
       {shown.length === 0 ? (
-        <EmptyState icon="issue" title="No issues here" hint="Issues you create are pinned to model elements and tracked to resolution." />
+        <EmptyState icon="issue" title="No Issues Here" hint="Issues you create are pinned to model elements and tracked to resolution." />
       ) : (
         <ul>
           {shown.map((i) => (
             <li key={i.id} className="border-b border-soft/70 px-2.5 py-2.5">
-              <button className="block w-full text-left" onClick={() => i.elementId && ws.getState().focusElements([i.elementId])} title={i.elementId ? "Zoom to element" : undefined}>
+              <button className="block w-full text-left" onClick={() => i.elementId && ws.getState().focusElements([i.elementId])} title={i.elementId ? "Zoom to Element" : undefined}>
                 <div className="flex items-center gap-1.5">
                   <Pill tone={SEV_TONE[i.severity]} className="uppercase">
                     {i.severity}
@@ -76,7 +76,7 @@ export function Issues() {
                   onChange={(v) => ws.getState().setIssueStatus(i.id, v)}
                   options={[
                     { value: "open", label: "Open" },
-                    { value: "in-progress", label: "In progress" },
+                    { value: "in-progress", label: "In Progress" },
                     { value: "resolved", label: "Resolved" },
                   ]}
                 />

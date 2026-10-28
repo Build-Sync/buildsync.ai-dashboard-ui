@@ -2,7 +2,8 @@
   "//": [
     "package.json: the project manifest for BuildSync AI (workspace UI and routing, mock data).",
     "Scripts: dev / build / start run Next.js; typecheck = tsc; lint = ESLint; test = unit tests (tsx --test, no browser);",
-    "e2e = all browser suites (routing, workspace, platform), each also runnable alone as e2e:routing, e2e:workspace, e2e:platform.",
+    "check:portable = what breaks on Linux but not on Windows / macOS (import letter case, CRLF, shell-only npm scripts);",
+    "e2e = all browser suites (routing, workspace, tools, layout, site, buttons, platform), each also runnable alone as e2e:routing, e2e:workspace, e2e:tools, e2e:layout, e2e:site, e2e:buttons, e2e:platform.",
     "Author: Giordano Bertin-Maurice",
     "Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved."
   ],
@@ -21,11 +22,16 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "check:portable": "node scripts/check-portable.mjs",
     "test": "tsx --test --test-reporter=spec \"lib/**/*.test.ts\"",
     "e2e": "node e2e/run-all.mjs",
     "e2e:routing": "node e2e/routing.mjs",
     "e2e:workspace": "node e2e/workspace.mjs",
-    "e2e:platform": "node e2e/platform.mjs"
+    "e2e:platform": "node e2e/platform.mjs",
+    "e2e:tools": "node e2e/tools.mjs",
+    "e2e:layout": "node e2e/layout.mjs",
+    "e2e:site": "node e2e/site.mjs",
+    "e2e:buttons": "node e2e/buttons.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5",

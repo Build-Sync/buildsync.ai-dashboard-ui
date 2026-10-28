@@ -2,7 +2,9 @@
  * lib/shortcuts.test.ts
  *
  * WHAT   Unit tests for lib/shortcuts.ts: turning key presses into canonical combos on each OS, normalising
- *        spellings, printing combos for each OS (⇧⌘S vs Ctrl+Shift+S) and resolving which combos trigger a command.
+ *        spellings, printing combos for each OS (⇧⌘S vs Ctrl+Shift+S), resolving which combos trigger a command, and
+ *        chords of up to 4 keys: their identity in any order, the rules they must follow, following held keys, and
+ *        telling a finished chord from one that may still grow.
  * FOR    `npm test`. These encode the cross-platform rules: ⌘ is the primary modifier on a Mac, the Mac delete key
  *        is Backspace, Option+letter and non-Latin layouts match by physical key, and Shift is ignored on punctuation.
  *
@@ -11,7 +13,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { bindingsOf, comboOf, defaultKey, formatCombo, normaliseCombo, type KeyEventLike } from "./shortcuts";
+import { ChordTracker, bindingsOf, chordId, chordProblem, comboOf, comboParts, defaultKey, formatCombo, matchChord, normaliseCombo, type KeyEventLike } from "./shortcuts";
 
 const ev = (key: string, mods: Partial<Pick<KeyEventLike, "ctrlKey" | "metaKey" | "altKey" | "shiftKey">> = {}, code?: string): KeyEventLike => ({
   key,
@@ -158,3 +160,73 @@ describe("defaultKey and bindingsOf", () => {
     assert.deepEqual(bindingsOf(redo, { REDO: "" }, "windows"), []);
   });
 });
+
+describe("chords of several keys", () => {
+  it("keeps the keys in the order written but compares them in any order", () => {
+    assert.equal(normaliseCombo("alt+w+a"), "Alt+W+A");
+    assert.equal(normaliseCombo("A+Alt+W+W"), "Alt+A+W");
+    assert.equal(chordId("Alt+W+A"), chordId("Alt+A+W"));
+    assert.notEqual(chordId("Alt+W+A"), chordId("Alt+Shift+W+A"));
+    assert.deepEqual(comboParts("Shift+Ctrl+Alt+K"), { mods: ["Ctrl", "Alt", "Shift"], keys: ["K"] });
+  });
+
+  it("prints several keys for each OS", () => {
+    assert.equal(formatCombo("Alt+W+N", "windows"), "Alt+W+N");
+    assert.equal(formatCombo("Alt+W+N", "mac"), "⌥W+N");
+    assert.equal(formatCombo("Ctrl+Alt+Shift+K", "mac"), "⌥⇧⌘K");
+  });
+
+  it("allows up to 4 keys, one key with Ctrl, and no bare letters", () => {
+    for (const ok of ["Alt+L", "Alt+W+N", "Alt+R+E+C", "Ctrl+Alt+Shift+K", "Shift+F3", "F7", "Delete", "Alt+Shift+2"]) assert.equal(chordProblem(ok), null, ok);
+    assert.equal(chordProblem("Alt+Shift+W+A"), null, "four keys is the most, and allowed");
+    assert.match(chordProblem("Alt+Shift+W+A+N")!, /at most 4/);
+    assert.match(chordProblem("Ctrl+A+B")!, /one other key/);
+    assert.match(chordProblem("W")!, /plain letters/);
+    assert.match(chordProblem("Q+W")!, /plain letters/);
+    assert.match(chordProblem("Alt")!, /at least one key/);
+    assert.match(chordProblem("Ctrl+W")!, /browser or the operating system/);
+    assert.match(chordProblem("Alt+F4")!, /browser or the operating system/);
+  });
+
+  const press = (key: string, code: string, mods: Partial<Pick<KeyEventLike, "ctrlKey" | "metaKey" | "altKey" | "shiftKey">> = {}) => ev(key, mods, code);
+
+  it("follows the keys held down, in any order, and forgets them when let go", () => {
+    const t = new ChordTracker();
+    assert.equal(t.down(press("Alt", "AltLeft", { altKey: true }), "windows"), "");
+    assert.equal(t.down(press("w", "KeyW", { altKey: true }), "windows"), "Alt+W");
+    assert.equal(t.down(press("n", "KeyN", { altKey: true }), "windows"), "Alt+W+N");
+    t.up({ key: "w", code: "KeyW" });
+    assert.equal(t.count, 1);
+    assert.equal(t.down(press("a", "KeyA", { altKey: true }), "windows"), "Alt+N+A");
+    t.reset();
+    assert.equal(t.count, 0);
+  });
+
+  it("on a Mac reads Option+letters by physical key, and takes one key with ⌘", () => {
+    const t = new ChordTracker();
+    assert.equal(t.down(press("∑", "KeyW", { altKey: true }), "mac"), "Alt+W");
+    assert.equal(t.down(press("˜", "KeyN", { altKey: true }), "mac"), "Alt+W+N");
+    t.reset();
+    assert.equal(t.down(press("s", "KeyS", { metaKey: true }), "mac"), "Ctrl+S");
+    // macOS never reports S let go while ⌘ is held: the next key is a chord of its own
+    assert.equal(t.down(press("z", "KeyZ", { metaKey: true }), "mac"), "Ctrl+Z");
+    t.up({ key: "Meta", code: "MetaLeft" });
+    assert.equal(t.count, 0);
+  });
+
+  it("runs a chord at once unless a longer one may still follow", () => {
+    const b = [
+      { target: "LINE", combo: "Alt+L" },
+      { target: "LABELS", combo: "Alt+L+B" },
+      { target: "WINDOW", combo: "Alt+W+N" },
+      { target: "QSAVE", combo: "Ctrl+S" },
+    ];
+    assert.deepEqual(matchChord("Alt+L", b), { exact: "LINE", longer: true });
+    assert.deepEqual(matchChord("Alt+B+L", b), { exact: "LABELS", longer: false });
+    assert.deepEqual(matchChord("Alt+N+W", b), { exact: "WINDOW", longer: false });
+    assert.deepEqual(matchChord("Alt+W", b), { exact: null, longer: true });
+    assert.deepEqual(matchChord("Ctrl+S", b), { exact: "QSAVE", longer: false });
+    assert.deepEqual(matchChord("Alt+Shift+L", b), { exact: null, longer: false });
+  });
+});
+

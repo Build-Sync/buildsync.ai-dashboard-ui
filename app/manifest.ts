@@ -41,7 +41,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     // jump-list / launcher actions, where the browser supports manifest shortcuts (e.g. the Windows taskbar)
     shortcuts: [
-      { name: "Open the demo workspace", short_name: "Demo", url: "/demo" },
+      { name: "Open the Demo Workspace", short_name: "Demo", url: "/demo" },
       { name: "Settings", url: "/settings/general" },
     ],
   };

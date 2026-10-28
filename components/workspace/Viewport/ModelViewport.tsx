@@ -6,19 +6,43 @@
  *        select, Shift / ⌘ / Ctrl-click to add, a dragged window to box-select, orbit, pan, zoom, walkthrough,
  *        the crosshair with dynamic input, the right-click menu, and two-finger pinch on touch screens.
  *        Overlays (selection, stress, simulation, solar path, callouts, UCS icon, ViewCube, navigation bar,
- *        section banner, viewport label) are layered on top.
+ *        section banner, viewport label) are layered on top. While a drawing or editing tool runs (store
+ *        `session`), a click is a point or pick for the tool (snapped by OSNAP / ORTHO / POLAR / grid), the
+ *        cursor shows the tool's rubber-band preview, right-click or double-click finishes the object, and a
+ *        library component dropped on the canvas starts its tool. DraftLayer draws the flat marks. The 2D plan can
+ *        show other storeys faded underneath (store `planShow`: the level below, or every level); room names
+ *        and place labels follow the Labels switch (store `labels`) and stand up on stems in 3D; the site's
+ *        property line (PropertyLine) lies on the ground in both views; furniture names follow `furnLabels`.
+ * ROOM   The room view (the camera's `eye`): a double-click on a room's name, in 2D or 3D, stands you inside it
+ *        (enterRoom). Inside, a drag looks around (it never moves walls), the wheel narrows or widens the field of
+ *        view, a trackpad scroll looks around, the arrow keys walk and turn (Shift + ← → steps sideways), a click on
+ *        another room's marker goes there and a double-click on the floor walks there (walkTo). The rooms of the
+ *        storey get ceilings (withCeilings, which the picking skips), and the overlays that only make sense from
+ *        outside (property line, selection outlines, draft marks, rulers …) step aside. RoomBar sits at the foot.
+ * SNAP   As in AutoCAD: OSNAP markers name what the cursor locked onto; holding Shift while a tool runs flips
+ *        ORTHO for that point; with OTRACK on, a snap point the cursor rests on for a moment is acquired (a
+ *        small green cross) and the cursor then locks to the horizontal / vertical through it (dotted guide).
  * FOR    The centre of the workspace (Viewport/index.tsx). Camera and plan state live in the workspace store;
  *        this component turns input into store updates. The SVG renderer can later be swapped for Three.js
  *        behind this same boundary.
- * OS     Left drag follows the navigation tool (default: orbit in 3D, pan in 2D); the middle button pans (Shift
- *        + middle orbits in 3D); Space + drag pans, which is the only pan a trackpad-only Mac has in 3D; Shift
- *        or ⌘ (Mac) / Ctrl (Windows, Linux) + drag draws a selection window. Control-click on a Mac is a right
+ * OS     With the Select tool a left drag selects or edits, as in Revit and AutoCAD: on empty space it draws a
+ *        window (left to right: what is fully inside) or a crossing (right to left: whatever it touches); on an
+ *        element it moves the selection (commitMove: joined walls stretch, doors and windows follow); on a grip
+ *        of a selected drawn item it moves that point (commitGrip). Esc during such a drag puts it back. Alt +
+ *        drag orbits (3D) or pans (2D); the other navigation tools drag as before (orbit, pan, zoom, walk); the
+ *        middle button pans (Shift + middle orbits in 3D); Space + drag pans, which is the only pan a
+ *        trackpad-only Mac has in 3D; Shift or ⌘ (Mac) / Ctrl (Windows, Linux) + drag adds a window to the
+ *        selection. One finger on a touch screen still orbits / pans. Control-click on a Mac is a right
  *        click (context menu). A mouse wheel zooms, a trackpad scroll pans, a pinch zooms about the fingers
  *        (Chromium ctrl+wheel, Safari gesture events, touch pointers); Settings → Display → Scroll gesture can
  *        force zoom or pan (lib/input.ts).
  * OS     Pointer capture is wrapped in capture() because it throws for pointers that are already gone (quick
  *        taps, synthetic events).
- * DEBUG  - A drag never ends: pointerup is missed when the OS cancels the pointer; cancelDrag() clears the
+ * DEBUG  - A tool click does nothing: the tool wants a click on something (a wall for DOOR); read the prompt in
+ *          the tool bar. The point is on the active level's plane in 3D, so draw in the 2D plan for precision.
+ *        - A double-click on a room's name does nothing: the viewport holds the pointer while it is pressed, so the
+ *          double-click lands on the viewport; the name under the cursor is found with elementsFromPoint.
+ *        - A drag never ends: pointerup is missed when the OS cancels the pointer; cancelDrag() clears the
  *          state on right-click, pointer cancel and pinch start.
  *        - Scrolling zooms when it should pan (or the reverse): the wheel classifier in lib/input.ts decides
  *          mouse vs trackpad; override it in Settings → Display.
@@ -38,17 +62,29 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createWheelClassifier, interpretWheel } from "@/lib/input";
 import { getPlatform, hasPrimaryModifier, isMacSecondaryClick } from "@/lib/platform";
 import { materialUsage } from "@/lib/scene";
-import { makeProjector, normBearing, orbit, type Camera } from "@/lib/scene/camera";
+import { beginTool, commitGrip, commitMove, ghostShapes, snapConfig, toolClick, toolEnter, toolPreview } from "@/lib/draw";
+import type { Preview } from "@/lib/draw/types";
+import { POINT_SNAPS, snapPoint, type SnapResult } from "@/lib/draw/snap";
+import { underlayLevels } from "@/lib/views";
+import { GROUNDS } from "@/lib/ground";
+import { FOV_MAX, FOV_MIN, ROOM_FOV, look, makeProjector, normBearing, orbit, stepEye, type Camera } from "@/lib/scene/camera";
+import { enterRoom, runCommand, walkTo } from "@/lib/commands";
+import { CEILING_ID, OWN_BUILDING, withCeilings } from "@/lib/draw/interior";
 import { elementOutline, planCutFor, planLevelsFor, renderScene, type Tint } from "@/lib/scene/render";
 import { sunVector, PROJECT_SUN_HOUR } from "@/lib/scene/sun";
 import type { LayerId } from "@/lib/types";
 import { useApp } from "@/lib/store/app-provider";
 import { useWs, useWsApi } from "@/lib/store/workspace-provider";
 import { buildSchedule, phaseStateAt } from "@/lib/timeline";
-import { clamp, fmtCoord } from "@/lib/utils";
+import { clamp, fmtCoord, fmtLength } from "@/lib/utils";
 import { useEffectiveStyle, useRunner, useScene } from "../hooks";
+import { chooseFurniture, COMPONENT_COMMAND } from "../ModelExplorer/Library";
+import { DraftLayer } from "./DraftLayer";
 import { NavBar } from "./NavBar";
-import { Callouts, NorthArrow, PlanAnnotations, SelectionOverlay, SimVectors, SolarPath, StressLegend, StressSpots, UcsIcon, ViewportDefs } from "./Overlays";
+import { ToolBar } from "./ToolBar";
+import { Callouts, FurnitureLabels, NorthArrow, PlanAnnotations, RoomLabels3D, RoomMarkers, SelectionOverlay, SimVectors, SolarPath, StressLegend, StressSpots, UcsIcon, UtilityMarks, ViewportDefs } from "./Overlays";
+import { RoomBar } from "./RoomBar";
+import { LotLines, PropertyLine } from "./PropertyLine";
 import { ViewCube } from "./ViewCube";
 import { ViewportLabel } from "./ViewportLabel";
 import { SectionBanner } from "./SectionBanner";
@@ -56,7 +92,8 @@ import { SectionBanner } from "./SectionBanner";
 /* The workspace canvas: 3D isometric house or 2D plan, one SVG renderer.
  * Swap in Three.js / react-three-fiber later behind this same <Viewport/> boundary. */
 
-type DragMode = "orbit" | "pan" | "zoom" | "walk" | "box";
+type DragMode = "orbit" | "pan" | "zoom" | "walk" | "box" | "move" | "grip" | "look";
+
 
 /** The 3D / 2D canvas with all of its input handling. */
 export function ModelViewport() {
@@ -102,6 +139,32 @@ export function ModelViewport() {
   const activeTool = useWs((s) => s.activeTool);
   const toolPrompt = useWs((s) => s.toolPrompt);
   const reviewMode = useWs((s) => s.reviewMode);
+  const session = useWs((s) => s.session);
+  const measure = useWs((s) => s.measure);
+  const elColors = useWs((s) => s.elColors);
+  const gridSnap = useApp((s) => s.settings.gridSnap);
+  const planShow = useWs((s) => s.planShow);
+  const labelsOn = useWs((s) => s.labels);
+  const roomsOn = useWs((s) => s.roomLabels);
+  const belowGrade = useWs((s) => s.belowGrade);
+  const cutaway = useWs((s) => s.cutaway);
+  const mepLook = useWs((s) => s.mepLook);
+  const insideRoom = useWs((s) => s.insideRoom);
+  const furnLabels = useWs((s) => s.furnLabels);
+  const groundType = useWs((s) => s.project.ground ?? "lawn");
+  const ground = useMemo(() => ({ side: GROUNDS[groundType].side, pattern: GROUNDS[groundType].pattern }), [groundType]);
+  const site = useWs((s) => s.project.site);
+  const projectLevels = useWs((s) => s.project.levels);
+  /** what the running tool shows under the cursor, and where the cursor snapped */
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [snapMark, setSnapMark] = useState<{ pt: [number, number]; kind: string; guides?: SnapResult["guides"] } | null>(null);
+  /** Shift held: ORTHO flips while a tool runs */
+  const shiftRef = useRef(false);
+  /** object snap tracking: the snap points acquired (rested on), newest last, and the one being rested on now */
+  const trackRef = useRef<[number, number][]>([]);
+  const [trackPts, setTrackPts] = useState<[number, number][]>([]);
+  const acquire = useRef<{ key: string; timer: number } | null>(null);
+  const hasPreview = useRef(false);
 
   const wrap = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -165,6 +228,9 @@ export function ModelViewport() {
     [is2d, plan.rotation, plan.zoom, plan.panX, plan.panY, camera],
   );
   const proj = useMemo(() => makeProjector(cam, size, scene.center, scene.radius), [cam, size, scene]);
+  /** standing inside a room: the camera has an eye; the rooms of its storey get ceilings while you are in there */
+  const eyeOn = !is2d && !!camera.eye;
+  const viewScene = useMemo(() => (eyeOn ? withCeilings(scene, plan.level) : scene), [eyeOn, scene, plan.level]);
 
   /* inputs to the renderer */
   const layerVis = useMemo(() => Object.fromEntries(layersState.map((l) => [l.id, l.visible])) as Partial<Record<LayerId, boolean>>, [layersState]);
@@ -189,13 +255,15 @@ export function ModelViewport() {
     return { tint: t, dimOthers: dim };
   }, [materialHighlight, proposals, showClashId, clashes, selection, scene]);
 
-  const planCfg = useMemo(() => (is2d ? { cutZ: planCutFor(scene, plan.level), levels: planLevelsFor(plan.level) } : null), [is2d, scene, plan.level]);
+  // the foundation plan also shows what is below ground (footings, piers, the septic system), dashed
+  const planCfg = useMemo(() => (is2d ? { cutZ: planCutFor(scene, plan.level), levels: planLevelsFor(plan.level), below: plan.level === "foundation" } : null), [is2d, scene, plan.level]);
+  const underlay = useMemo(() => (is2d ? underlayLevels(plan.level, planShow, projectLevels.map((l) => l.id)) : []), [is2d, plan.level, planShow, projectLevels]);
   const cutY = section && !is2d ? sectionY : null;
 
   const rendered = useMemo(() => {
     if (!size.w || !size.h) return "";
     return renderScene({
-      scene,
+      scene: viewScene,
       proj,
       style,
       plan: planCfg,
@@ -211,8 +279,47 @@ export function ModelViewport() {
       dimOthers,
       sun,
       ghostMep: true,
+      elColors,
+      // inside a room the Cutaway and Below Grade do not apply: you see the room as it is
+      belowGrade: belowGrade && !eyeOn,
+      ground,
+      cutAt: !is2d && cutaway && !eyeOn ? planCutFor(scene, plan.level) : null,
+      mepLook,
     }).svg;
-  }, [size, scene, proj, style, planCfg, cutY, colors, layerVis, hiddenSet, isoSet, phaseState, rendering.shadows, rendering.edges, rendering.quality, dragging, tint, dimOthers, sun]);
+  }, [size, scene, viewScene, proj, style, planCfg, cutY, colors, layerVis, hiddenSet, isoSet, phaseState, rendering.shadows, rendering.edges, rendering.quality, dragging, tint, dimOthers, sun, elColors, belowGrade, ground, is2d, cutaway, plan.level, mepLook, eyeOn]);
+
+  /* the other storeys, drawn faded under the plan (Underlay) */
+  const underlaySvg = useMemo(() => {
+    if (!size.w || !size.h || !underlay.length) return "";
+    return underlay
+      .map(
+        (level) =>
+          renderScene({
+            scene,
+            proj,
+            style,
+            plan: { cutZ: planCutFor(scene, level), levels: [level] },
+            sectionY: null,
+            colors,
+            layers: layerVis,
+            hidden: hiddenSet,
+            isolated: isoSet,
+            phaseState,
+            shadows: false,
+            edges: true,
+            tint: {},
+            dimOthers: false,
+            sun,
+            ghostMep: true,
+            elColors,
+          }).svg,
+      )
+      .join("");
+  }, [size, underlay, scene, proj, style, colors, layerVis, hiddenSet, isoSet, phaseState, sun, elColors]);
+
+  const draftIds = useMemo(() => new Set((scene.drafts ?? []).map((d) => d.id)), [scene]);
+  const planLevels = useMemo(() => (is2d ? planLevelsFor(plan.level) : null), [is2d, plan.level]);
+  const units3 = useMemo(() => ({ system: units.system, precision: units.precision }), [units.system, units.precision]);
 
   /* ── frame requested elements ─────────────────────────────────────── */
   const lastFocus = useRef(0);
@@ -220,7 +327,7 @@ export function ModelViewport() {
     if (!focus || focus.n === lastFocus.current || !size.w) return;
     lastFocus.current = focus.n;
     const els = focus.ids.map((id) => scene.elementById[id]).filter(Boolean);
-    if (!els.length) return;
+    if (!els.length || (!is2d && cam.eye)) return;
     const base = makeProjector({ ...cam, zoom: 1, panX: 0, panY: 0 }, size, scene.center, scene.radius);
     let x0 = Infinity;
     let y0 = Infinity;
@@ -244,10 +351,53 @@ export function ModelViewport() {
   }, [focus, size, scene, cam, is2d, plan.zoom, ws]);
 
   /* ── pointer interaction ──────────────────────────────────────────── */
-  const drag = useRef<{ mode: DragMode; x: number; y: number; moved: boolean; el: string | null; button: number; startCam: Camera; startPlan: typeof plan; shift: boolean } | null>(null);
+  const drag = useRef<{
+    mode: DragMode;
+    x: number;
+    y: number;
+    moved: boolean;
+    el: string | null;
+    button: number;
+    startCam: Camera;
+    startPlan: typeof plan;
+    shift: boolean;
+    /** move: what is being dragged and the snapped point where the drag began */
+    ids?: string[];
+    start?: [number, number];
+    /** grip: the drawn item and which of its points is dragged */
+    grip?: { id: string; index: number };
+    /** move / grip: the snapped displacement or point while dragging */
+    to?: [number, number];
+    /** a room name or marker pressed (a click on one in a room view goes there) */
+    room?: string | null;
+  } | null>(null);
   const raf = useRef(0);
 
-  const pickEl = (t: EventTarget | null): string | null => (t as Element | null)?.closest?.("[data-el]")?.getAttribute("data-el") ?? null;
+  // the ceilings of a room view are not elements: a click on one picks nothing
+  const pickEl = (t: EventTarget | null): string | null => {
+    const id = (t as Element | null)?.closest?.("[data-el]")?.getAttribute("data-el") ?? null;
+    return id && !id.startsWith(CEILING_ID) ? id : null;
+  };
+
+  /** The point a click at these client coordinates lands on: on the active level's plane, snapped by the status-bar toggles. */
+  const snapAt = useCallback(
+    (clientX: number, clientY: number, from?: [number, number] | null) => {
+      const r = svgRef.current?.getBoundingClientRect();
+      if (!r) return null;
+      const x = clientX - r.left;
+      const y = clientY - r.top;
+      const raw = proj.unproject(x, y, scene.levelZ[plan.level]);
+      if (!raw) return null;
+      const st = ws.getState();
+      const last = from !== undefined ? from : st.session?.pts.length ? st.session.pts[st.session.pts.length - 1] : null;
+      const cfg = snapConfig(st, { snapSpacing: gridSnap.snapSpacing, polarAngle: gridSnap.polarAngle, osnap: gridSnap.osnap }, units.system);
+      // AutoCAD: holding Shift while drawing flips ORTHO for this point
+      if (st.session && shiftRef.current) cfg.ortho = !cfg.ortho;
+      const res = snapPoint(raw, last, scene, plan.level, cfg, 10 / Math.max(proj.scale, 0.01), trackRef.current);
+      return { ...res, x, y };
+    },
+    [proj, scene, plan.level, ws, gridSnap.snapSpacing, gridSnap.polarAngle, gridSnap.osnap, units.system],
+  );
 
   const updateCursor = useCallback(
     (clientX: number, clientY: number, over: boolean) => {
@@ -277,14 +427,50 @@ export function ModelViewport() {
       }
       cancelAnimationFrame(raf.current);
       raf.current = requestAnimationFrame(() => {
-        const z = is2d ? 0 : 0;
-        const w = proj.unproject(x, y, z);
+        const z = scene.levelZ[ws.getState().plan.level];
+        const hasTool = !!ws.getState().session;
+        const sn = over && hasTool ? snapAt(clientX, clientY) : null;
+        const w = sn ? sn.pt : proj.unproject(x, y, z);
         if (!over || !w) {
           ws.getState().setCursor(null);
           if (dynRef.current) dynRef.current.style.visibility = "hidden";
+          if (hasPreview.current) {
+            hasPreview.current = false;
+            setPreview(null);
+            setSnapMark(null);
+          }
           return;
         }
         ws.getState().setCursor({ x: w[0], y: w[1], z });
+        if (hasTool && sn) {
+          const pv = toolPreview(ctx, sn.pt);
+          hasPreview.current = true;
+          setPreview(pv);
+          setSnapMark({ pt: sn.pt, kind: sn.kind, guides: sn.guides });
+          // object snap tracking: resting on a snap point for a moment acquires it
+          if (POINT_SNAPS.has(sn.kind) && ws.getState().toggles.otrack) {
+            const pt = sn.pt as [number, number];
+            const key = `${pt[0].toFixed(4)},${pt[1].toFixed(4)}`;
+            if (acquire.current?.key !== key) {
+              if (acquire.current) clearTimeout(acquire.current.timer);
+              acquire.current = {
+                key,
+                timer: window.setTimeout(() => {
+                  const rest = trackRef.current.filter((q) => Math.hypot(q[0] - pt[0], q[1] - pt[1]) > 1e-6);
+                  trackRef.current = [...rest, pt].slice(-3);
+                  setTrackPts(trackRef.current);
+                }, 450),
+              };
+            }
+          } else if (acquire.current) {
+            clearTimeout(acquire.current.timer);
+            acquire.current = null;
+          }
+        } else if (hasPreview.current) {
+          hasPreview.current = false;
+          setPreview(null);
+          setSnapMark(null);
+        }
         const d = dynRef.current;
         if (d) {
           const tool = ws.getState().activeTool;
@@ -295,13 +481,50 @@ export function ModelViewport() {
         }
       });
     },
-    [display.crosshairSize, size.w, size.h, navTool, is2d, proj, ws, dynOn, units.system, units.precision, toolPrompt],
+    [display.crosshairSize, size.w, size.h, navTool, proj, ws, dynOn, units.system, units.precision, toolPrompt, scene, snapAt, ctx],
   );
+
+  /* a tool that ended (Esc, Finish, another command) leaves no preview and no tracking points behind */
+  const sessionOn = !!session;
+  useEffect(() => {
+    if (sessionOn) return;
+    if (hasPreview.current) {
+      hasPreview.current = false;
+      setPreview(null);
+      setSnapMark(null);
+    }
+    if (acquire.current) clearTimeout(acquire.current.timer);
+    acquire.current = null;
+    if (trackRef.current.length) {
+      trackRef.current = [];
+      setTrackPts([]);
+    }
+  }, [sessionOn]);
+
+  /* Shift flips ORTHO while drawing: keep track of it even when the mouse does not move */
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (e.key === "Shift") shiftRef.current = e.type === "keydown";
+    };
+    const off = () => (shiftRef.current = false);
+    window.addEventListener("keydown", on);
+    window.addEventListener("keyup", on);
+    window.addEventListener("blur", off);
+    return () => {
+      window.removeEventListener("keydown", on);
+      window.removeEventListener("keyup", on);
+      window.removeEventListener("blur", off);
+    };
+  }, []);
 
   /** zoom by factor `f`, keeping the point under (mx, my) fixed */
   const zoomAbout = useCallback(
     (f: number, mx: number, my: number) => {
       const s = ws.getState();
+      if (s.view === "3d" && s.camera.eye) {
+        s.setCamera({ fov: clamp((s.camera.fov ?? ROOM_FOV) / f, FOV_MIN, FOV_MAX) });
+        return;
+      }
       if (s.view === "2d") {
         const z = clamp(s.plan.zoom * f, 0.4, 12);
         const k = 1 - z / s.plan.zoom;
@@ -318,6 +541,7 @@ export function ModelViewport() {
     (dx: number, dy: number) => {
       const s = ws.getState();
       if (s.view === "2d") s.setPlan({ panX: s.plan.panX + dx, panY: s.plan.panY + dy });
+      else if (s.camera.eye) s.setCamera(look(s.camera, dx, dy));
       else s.setCamera({ panX: s.camera.panX + dx, panY: s.camera.panY + dy });
     },
     [ws],
@@ -332,12 +556,40 @@ export function ModelViewport() {
     }
   };
 
-  /** abandon any drag in progress (right click, pointer cancelled by the OS, pinch started) */
+  /** abandon any drag in progress (right click, pointer cancelled by the OS, pinch started, Esc) */
   const cancelDrag = () => {
+    const wasEditing = drag.current?.mode === "move" || drag.current?.mode === "grip";
     drag.current = null;
     setDragging(false);
     if (boxRef.current) boxRef.current.style.visibility = "hidden";
+    if (wasEditing) {
+      hasPreview.current = false;
+      setPreview(null);
+      setSnapMark(null);
+    }
   };
+
+  /** Can a drag starting on this element move it? (not the terrain or landscape, nothing locked) */
+  const movable = (id: string): boolean => {
+    const el = scene.elementById[id];
+    if (!el || el.layer === "topography" || el.layer === "landscape" || el.category === "Paving") return false;
+    const st = ws.getState();
+    return !st.locked.includes(id) && !st.project.layers.find((l) => l.id === el.layer)?.locked;
+  };
+
+  /* Esc while dragging an element or a grip puts it back */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const m = drag.current?.mode;
+      if (e.key === "Escape" && (m === "move" || m === "grip")) {
+        e.stopPropagation();
+        cancelDrag();
+        ctx.app.getState().log("info", "*Cancel*");
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  });
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.button === 2) return;
@@ -360,15 +612,26 @@ export function ModelViewport() {
     // ⌘ on a Mac, Ctrl elsewhere: with Shift it draws a selection window and adds to the selection
     const additive = e.shiftKey || hasPrimaryModifier(e, platform);
     let mode: DragMode;
-    if (e.button === 1) mode = e.shiftKey && !is2d ? "orbit" : "pan";
+    const el = pickEl(e.target);
+    const gripAttr = (e.target as Element | null)?.closest?.("[data-grip]")?.getAttribute("data-grip") ?? null;
+    // with the Select tool a mouse drag selects (on empty space) or moves (on an element), as in Revit and AutoCAD;
+    // touch keeps one-finger orbit / pan, and Alt + drag, the middle button or Space + drag still navigate
+    const selecting = navTool === "select" && !ws.getState().session && e.pointerType !== "touch";
+    if (eyeOn && e.button !== 2 && !spaceRef.current && !gripAttr) mode = "look";
+    else if (e.button === 1) mode = e.shiftKey && !is2d ? "orbit" : "pan";
     else if (spaceRef.current) mode = "pan";
-    else if (additive) mode = "box";
+    else if (selecting && e.altKey) mode = is2d ? "pan" : "orbit";
+    else if (selecting && gripAttr) mode = "grip";
+    else if (additive && !ws.getState().session) mode = "box";
+    else if (selecting) mode = el && movable(el) ? "move" : "box";
     else if (navTool === "pan") mode = "pan";
     else if (navTool === "zoom") mode = "zoom";
     else if (navTool === "walk" && !is2d) mode = "walk";
     else if (navTool === "orbit" && !is2d) mode = "orbit";
     else mode = is2d ? "pan" : "orbit";
-    drag.current = { mode, x: e.clientX, y: e.clientY, moved: false, el: pickEl(e.target), button: e.button, startCam: ws.getState().camera, startPlan: ws.getState().plan, shift: additive };
+    const sn = mode === "move" || mode === "grip" ? snapAt(e.clientX, e.clientY, null) : null;
+    const grip = gripAttr ? { id: gripAttr.slice(0, gripAttr.lastIndexOf(":")), index: Number(gripAttr.slice(gripAttr.lastIndexOf(":") + 1)) } : undefined;
+    drag.current = { mode, x: e.clientX, y: e.clientY, moved: false, el, button: e.button, startCam: ws.getState().camera, startPlan: ws.getState().plan, shift: additive, start: sn ? (sn.pt as [number, number]) : undefined, grip, room: (e.target as Element | null)?.closest?.("[data-room]")?.getAttribute("data-room") ?? null };
     if (e.button === 1) e.preventDefault();
   };
 
@@ -387,6 +650,7 @@ export function ModelViewport() {
         return;
       }
     }
+    shiftRef.current = e.shiftKey;
     const d = drag.current;
     if (!d) {
       const id = pickEl(e.target);
@@ -400,12 +664,42 @@ export function ModelViewport() {
     if (!d.moved) {
       d.moved = true;
       setDragging(true);
+      // dragging an element that is not selected selects it (and its group) first
+      if (d.mode === "move" && d.el) {
+        const st = ws.getState();
+        if (!st.selection.includes(d.el)) st.select([d.el]);
+        d.ids = ws.getState().selection.filter((id) => movable(id));
+      }
+    }
+    const s = ws.getState();
+    if (d.mode === "move" || d.mode === "grip") {
+      const it = d.grip ? scene.items?.[d.grip.id] : undefined;
+      // ORTHO / POLAR work from where the drag began (a grip: from the point's own starting position)
+      const anchor = d.mode === "grip" && it ? (it.pts[d.grip!.index] ?? null) : (d.start ?? null);
+      const sn = snapAt(e.clientX, e.clientY, anchor as [number, number] | null);
+      if (!sn || !d.start) return;
+      const pt = sn.pt as [number, number];
+      hasPreview.current = true;
+      setSnapMark({ pt, kind: sn.kind });
+      if (d.mode === "move") {
+        const dv: [number, number] = [pt[0] - d.start[0], pt[1] - d.start[1]];
+        d.to = dv;
+        const len = Math.hypot(dv[0], dv[1]);
+        setPreview({ shapes: [...ghostShapes(scene, d.ids ?? [], [1, 0, 0, 1, dv[0], dv[1]]), { pts: [d.start, pt], tone: "ghost", dashed: true }], labels: [{ at: pt, text: `${fmtLength(len, units.system, units.precision)}` }] });
+      } else if (it) {
+        d.to = pt;
+        const pts = it.pts.map((q, i) => (i === d.grip!.index ? pt : q));
+        setPreview({ shapes: [{ pts, closed: !!it.closed || it.kind === "rect", tone: "ghost" }], labels: [{ at: pt, text: `${fmtCoord(pt[0], units.system, units.precision)}, ${fmtCoord(pt[1], units.system, units.precision)}` }] });
+      }
+      return;
     }
     updateCursor(e.clientX, e.clientY, true);
-    const s = ws.getState();
     switch (d.mode) {
       case "orbit":
         s.setCamera(orbit(d.startCam, dx, dy));
+        break;
+      case "look":
+        s.setCamera(look(d.startCam, dx, dy));
         break;
       case "walk":
         s.setCamera({ bearing: normBearing(d.startCam.bearing - dx * 0.4), zoom: clamp(d.startCam.zoom * Math.exp(-dy * 0.006), 0.4, 14) });
@@ -430,6 +724,12 @@ export function ModelViewport() {
           b.setAttribute("y", String(y0));
           b.setAttribute("width", String(Math.abs(dx)));
           b.setAttribute("height", String(Math.abs(dy)));
+          // left to right: a window (only what is fully inside); right to left: crossing (whatever it touches)
+          const crossing = e.clientX < d.x;
+          b.style.stroke = crossing ? "#3ecf8e" : "var(--accent)";
+          b.style.fill = crossing ? "#3ecf8e" : "var(--accent)";
+          b.setAttribute("stroke-dasharray", crossing ? "6 4" : "0");
+          b.setAttribute("data-crossing", crossing ? "1" : "0");
           b.style.visibility = "visible";
         }
         break;
@@ -452,22 +752,49 @@ export function ModelViewport() {
     if (boxRef.current) boxRef.current.style.visibility = "hidden";
     if (!d) return;
     const s = ws.getState();
+    if (d.mode === "grip" && !d.moved) return; // a click on a grip keeps the selection
+    if ((d.mode === "move" || d.mode === "grip") && d.moved) {
+      hasPreview.current = false;
+      setPreview(null);
+      setSnapMark(null);
+      if (d.mode === "move" && d.to && d.ids?.length && Math.hypot(d.to[0], d.to[1]) > 1e-6) commitMove(ctx, d.ids, d.to);
+      if (d.mode === "grip" && d.grip && d.to) commitGrip(ctx, d.grip.id, d.grip.index, d.to);
+      return;
+    }
     if (d.mode === "box" && d.moved) {
       const r = svgRef.current!.getBoundingClientRect();
       const x0 = Math.min(d.x, e.clientX) - r.left;
       const x1 = Math.max(d.x, e.clientX) - r.left;
       const y0 = Math.min(d.y, e.clientY) - r.top;
       const y1 = Math.max(d.y, e.clientY) - r.top;
-      const inside: string[] = [];
+      const crossing = e.clientX < d.x;
+      const picked: string[] = [];
       for (const el of scene.elements) {
         if (layerVis[el.layer] === false || hiddenSet.has(el.id) || el.layer === "topography") continue;
+        if (isoSet && !isoSet.has(el.id)) continue;
+        // in the plan, only what the plan of this level shows
+        if (planLevels && !planLevels.includes(scene.items?.[el.id]?.level ?? el.level)) continue;
         const o = elementOutline(el, proj);
-        const cx = o.box.x + o.box.w / 2;
-        const cy = o.box.y + o.box.h / 2;
-        if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) inside.push(el.id);
+        const bx0 = o.box.x;
+        const bx1 = o.box.x + o.box.w;
+        const by0 = o.box.y;
+        const by1 = o.box.y + o.box.h;
+        const hit = crossing ? bx1 >= x0 && bx0 <= x1 && by1 >= y0 && by0 <= y1 : bx0 >= x0 && bx1 <= x1 && by0 >= y0 && by1 <= y1;
+        if (hit) picked.push(el.id);
       }
-      s.select(inside, d.shift);
-      ctx.app.getState().log("ok", `✓ ${inside.length} element(s) selected by window`);
+      s.select(picked, d.shift);
+      ctx.app.getState().log("ok", `✓ ${picked.length} element(s) selected by ${crossing ? "crossing" : "window"}`);
+      return;
+    }
+    // in a room view, a click on another room's marker goes there
+    if (!d.moved && d.button === 0 && eyeOn && d.room && !s.session) {
+      enterRoom(ctx, d.room);
+      return;
+    }
+    // a plain click while a drawing / editing tool runs is a point (or pick) for the tool
+    if (!d.moved && d.button === 0 && s.session) {
+      const sn = snapAt(e.clientX, e.clientY);
+      if (sn) toolClick(ctx, { pt: sn.pt, at: (z) => proj.unproject(sn.x, sn.y, z), hit: d.el, shift: d.shift });
       return;
     }
     if (!d.moved && d.button === 0) {
@@ -489,7 +816,8 @@ export function ModelViewport() {
         return;
       }
       s.select([id], d.shift);
-      if (s.docks.palettes && s.panel !== "properties" && !["stress-test", "simulation", "council"].includes(s.panel)) s.setPanel("properties");
+      // selecting switches the palette to Properties, but never pops open a palette window the user minimised
+      if (s.docks.palettes && s.dockSize.palettes !== "min" && s.panel !== "properties" && !["stress-test", "simulation", "council"].includes(s.panel)) s.setPanel("properties");
     }
   };
 
@@ -536,16 +864,55 @@ export function ModelViewport() {
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     cancelDrag(); // the menu swallows the matching pointerup on some platforms
+    // with a tool running, right-click finishes the object being drawn (like Enter) instead of opening the menu
+    const sess = ws.getState().session;
+    if (sess && (sess.pts.length || sess.picks.length)) {
+      toolEnter(ctx);
+      return;
+    }
     const id = pickEl(e.target);
     const s = ws.getState();
     if (id && !s.selection.includes(id)) s.select([id]);
     s.setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
-  const walk = () => {
-    ws.getState().setNavTool("walk");
-    ws.getState().setCamera({ pitch: 12, perspective: true, zoom: 1.6 });
+  /** A library component dropped on the viewport: start its tool and give it the drop point. */
+  const onDrop = (e: React.DragEvent) => {
+    const label = e.dataTransfer.getData("application/x-bs-component");
+    const command = COMPONENT_COMMAND[label];
+    if (!command) return;
+    e.preventDefault();
+    const sn = snapAt(e.clientX, e.clientY);
+    if (!sn) return;
+    const hit = (document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.hasAttribute("data-el")) as Element | undefined)?.getAttribute("data-el") ?? null;
+    // a piece of furniture from the Library's catalogue: the FURN tool places that piece
+    const piece = e.dataTransfer.getData("application/x-bs-furniture");
+    if (piece) chooseFurniture(ws, piece);
+    if (ws.getState().session?.tool !== command) beginTool(ctx, command);
+    toolClick(ctx, { pt: sn.pt, at: (z) => proj.unproject(sn.x, sn.y, z), hit, shift: false });
   };
+
+  const walk = () => void runCommand(ctx, "3DWALK");
+
+  /* the room view: the arrow keys walk and turn (Shift + ← → steps sideways), while the pointer is over the view
+     or nothing else has the keyboard */
+  useEffect(() => {
+    if (!eyeOn) return;
+    const keys: Record<string, [number, number, number]> = { ArrowUp: [1.5, 0, 0], ArrowDown: [-1.5, 0, 0], ArrowLeft: [0, 0, 10], ArrowRight: [0, 0, -10] };
+    const down = (e: KeyboardEvent) => {
+      const k = keys[e.key];
+      const t = e.target as HTMLElement | null;
+      if (!k || (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable) && !hovering.current)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const s = ws.getState();
+      if (e.shiftKey && k[2]) s.setCamera(stepEye(s.camera, 0, k[2] > 0 ? -1.5 : 1.5));
+      else if (k[2]) s.setCamera({ bearing: normBearing(s.camera.bearing + k[2]) });
+      else s.setCamera(stepEye(s.camera, k[0], 0));
+    };
+    window.addEventListener("keydown", down, true);
+    return () => window.removeEventListener("keydown", down, true);
+  }, [eyeOn, ws]);
 
   /* dot grid spacing follows zoom */
   const gridPx = clamp(proj.scale * 2, 14, 64);
@@ -583,6 +950,18 @@ export function ModelViewport() {
           }
         }}
         onContextMenu={onContextMenu}
+        onDoubleClick={(e) => {
+          if (ws.getState().session) return toolEnter(ctx);
+          // the viewport holds the pointer while it is pressed, so the double-click lands on it: look under the cursor
+          const room = document.elementsFromPoint(e.clientX, e.clientY).map((n) => n.closest("[data-room]")).find(Boolean)?.getAttribute("data-room");
+          if (room) return void enterRoom(ctx, room);
+          if (!eyeOn) return;
+          const r = svgRef.current!.getBoundingClientRect();
+          const pt = proj.unproject(e.clientX - r.left, e.clientY - r.top, scene.levelZ[plan.level] ?? 0);
+          if (pt) walkTo(ctx, pt);
+        }}
+        onDragOver={(e) => e.dataTransfer.types.includes("application/x-bs-component") && e.preventDefault()}
+        onDrop={onDrop}
       >
         <ViewportDefs />
         {gridOn && (
@@ -593,23 +972,44 @@ export function ModelViewport() {
             <rect width="100%" height="100%" fill="url(#bs-dots)" pointerEvents="none" />
           </>
         )}
-        {guides && <Guides proj={proj} scene={scene} />}
+        {guides && !eyeOn && <Guides proj={proj} scene={scene} />}
+        {underlaySvg && (
+          <>
+            {/* the other storeys in a blue halftone, as Revit draws an underlay */}
+            <filter id="bs-underlay" colorInterpolationFilters="sRGB">
+              <feColorMatrix type="matrix" values="0.064 0.215 0.022 0 0.05  0.117 0.393 0.040 0 0.12  0.213 0.715 0.072 0 0.25  0 0 0 1 0" />
+            </filter>
+            <g data-testid="plan-underlay" data-levels={underlay.join(" ")} opacity={0.55} filter="url(#bs-underlay)" pointerEvents="none" dangerouslySetInnerHTML={{ __html: underlaySvg }} />
+          </>
+        )}
         <g data-testid="scene" dangerouslySetInnerHTML={{ __html: rendered }} />
-        {is2d && <PlanAnnotations scene={scene} proj={proj} level={plan.level} showGrid />}
-        {!is2d && section && calloutsOn && <Callouts callouts={scene.callouts} proj={proj} sectionY={cutY} />}
-        {stressOverlay && stressResult && <StressSpots scene={scene} proj={proj} result={stressResult} sectionY={cutY} />}
-        {simVectors && simResult && <SimVectors scene={scene} proj={proj} result={simResult} />}
-        {solar && <SolarPath scene={scene} proj={proj} hour={rendering.sunPosition === "custom" ? rendering.sunHour : PROJECT_SUN_HOUR} />}
-        {sectionBox && <SectionBoxOverlay proj={proj} scene={scene} />}
-        {clashEls.map((id) => {
+        {is2d && <PlanAnnotations scene={scene} proj={proj} level={plan.level} showGrid rooms={roomsOn} />}
+        {is2d && (plan.level === "level1" || plan.level === "foundation") && layerVis.utilities !== false && <UtilityMarks scene={scene} proj={proj} outlines={plan.level !== "foundation"} />}
+        {scene.lots && layerVis.site !== false && !eyeOn && <LotLines lots={scene.lots} proj={proj} z={is2d ? 0 : scene.grade} />}
+        {site?.boundary && layerVis.site !== false && !eyeOn && <PropertyLine site={site} proj={proj} z={is2d ? 0 : scene.grade} plan={is2d} fmt={(ft) => fmtLength(ft, units.system, units.precision)} metric={units.system !== "imperial"} labels={labelsOn} />}
+        {!is2d && roomsOn && !eyeOn && <RoomLabels3D scene={scene} proj={proj} cutY={cutY} />}
+        {furnLabels && <FurnitureLabels scene={scene} proj={proj} level={is2d ? plan.level : null} />}
+        {eyeOn && <RoomMarkers scene={scene} proj={proj} level={plan.level} here={insideRoom} building={scene.rooms.find((r) => r.id === insideRoom)?.building?.id ?? OWN_BUILDING} />}
+        {!is2d && !eyeOn && section && calloutsOn && <Callouts callouts={scene.callouts} proj={proj} sectionY={cutY} />}
+        {stressOverlay && stressResult && !eyeOn && <StressSpots scene={scene} proj={proj} result={stressResult} sectionY={cutY} />}
+        {simVectors && simResult && !eyeOn && <SimVectors scene={scene} proj={proj} result={simResult} />}
+        {solar && !eyeOn && <SolarPath scene={scene} proj={proj} hour={rendering.sunPosition === "custom" ? rendering.sunHour : PROJECT_SUN_HOUR} />}
+        {sectionBox && !eyeOn && <SectionBoxOverlay proj={proj} scene={scene} />}
+        {!eyeOn && clashEls.map((id) => {
           const el = scene.elementById[id];
           if (!el) return null;
           const o = elementOutline(el, proj);
           return <circle key={id} cx={o.box.x + o.box.w / 2} cy={o.box.y + o.box.h / 2} r={Math.max(o.box.w, o.box.h) / 2 + 14} fill="none" stroke="var(--bad)" strokeWidth={2} className="anim-pulse" pointerEvents="none" />;
         })}
-        <SelectionOverlay scene={scene} proj={proj} selection={selection} hover={hover} />
+        {!eyeOn && <DraftLayer scene={scene} proj={proj} levels={planLevels} layerVis={layerVis} hidden={hiddenSet} isolated={isoSet} selection={selection} hover={hover} preview={preview} snap={snapMark} measure={measure} units={units3} labels={labelsOn} rooms={roomsOn} />}
+        {session &&
+          trackPts.map((q, i) => {
+            const t = proj.project([q[0], q[1], scene.levelZ[plan.level]]);
+            return <path key={i} d={`M${(t.x - 4).toFixed(1)},${t.y.toFixed(1)}h8M${t.x.toFixed(1)},${(t.y - 4).toFixed(1)}v8`} stroke="#3ecf8e" strokeWidth={1.6} pointerEvents="none" data-testid="track-point" />;
+          })}
+        {!eyeOn && <SelectionOverlay scene={scene} proj={proj} selection={selection.filter((id) => !draftIds.has(id))} hover={hover && draftIds.has(hover) ? null : hover} noGrips={scene.items} />}
         {is2d && <NorthArrow proj={proj} x={size.w - 118} y={size.h - 34} />}
-        {rulers && <Rulers proj={proj} w={size.w} h={size.h} system={units.system} />}
+        {rulers && !eyeOn && <Rulers proj={proj} w={size.w} h={size.h} system={units.system} />}
         <rect ref={boxRef} fill="var(--accent)" fillOpacity={0.12} stroke="var(--accent)" strokeDasharray="4 3" style={{ visibility: "hidden" }} pointerEvents="none" />
         <g pointerEvents="none">
           <line ref={crossH} style={{ stroke: crossColor, visibility: "hidden" }} strokeWidth={1} strokeOpacity={0.75} />
@@ -627,9 +1027,11 @@ export function ModelViewport() {
       {section && !is2d && <SectionBanner />}
       {stressOverlay && stressResult && <StressLegend />}
       {reviewMode && (
-        <div className="absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full border border-warn/60 bg-chrome/90 px-3 py-0.5 text-[0.6875rem] font-semibold text-warn">REVIEW MODE · read-only</div>
+        <div className="absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full border border-warn/60 bg-chrome/90 px-3 py-0.5 text-[0.6875rem] font-semibold text-warn">REVIEW MODE · Read-Only</div>
       )}
-      {activeTool && (
+      {session && <ToolBar />}
+      {eyeOn && <RoomBar raised={!!activeTool && !session} />}
+      {activeTool && !session && (
         <div className="mono absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded border border-line bg-chrome/90 px-2 py-0.5 text-[0.6875rem] text-t2">
           <span className="text-accent">{activeTool}</span> {toolPrompt} <span className="text-t3">· Esc to cancel</span>
         </div>

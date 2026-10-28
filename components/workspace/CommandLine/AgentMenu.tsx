@@ -3,7 +3,7 @@
  *
  * WHAT   The agent selector menu: every AI agent with its model; connected ones can be chosen as the active
  *        agent, disconnected ones are greyed and open their Connect dialog.
- * FOR    Opened from the command line's agent button. It ends with "Manage connectors…", which opens Settings →
+ * FOR    Opened from the command line's agent button. It ends with "Manage Connectors…", which opens Settings →
  *        Integrations.
  *
  * Author: Giordano Bertin-Maurice
@@ -26,8 +26,8 @@ export function AgentMenu({ anchor, onClose }: { anchor: Anchor | null; onClose:
   const agents = useApp((s) => s.agents);
   const active = useApp((s) => s.activeAgentId);
   return (
-    <Menu anchor={anchor} onClose={onClose} label="AI agents" width="17.5rem">
-      <div className="label-xs px-3 pb-1 pt-1.5">Active agent</div>
+    <Menu anchor={anchor} onClose={onClose} label="AI Agents" width="17.5rem">
+      <div className="label-xs px-3 pb-1 pt-1.5">Active Agent</div>
       {agents.map((a) => {
         const meta = AGENT_META[a.id];
         return (
@@ -64,7 +64,7 @@ export function AgentMenu({ anchor, onClose }: { anchor: Anchor | null; onClose:
           }}
           className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[0.75rem] text-accent hover:bg-accent/15"
         >
-          <Icon name="plus" size={13} /> Manage connectors…
+          <Icon name="plus" size={13} /> Manage Connectors…
         </button>
       </div>
     </Menu>

@@ -59,7 +59,7 @@ export function AiAnalysis() {
             Answered by <b className="text-t1">{AGENT_META[state.agentId].name}</b>
           </span>
         ) : (
-          <span className="text-[0.6875rem] text-t3">Not run yet</span>
+          <span className="text-[0.6875rem] text-t3">Not Run Yet</span>
         )}
         <div className="ml-auto flex items-center gap-1.5">
           <Select<AgentId>
@@ -70,15 +70,15 @@ export function AiAnalysis() {
             options={agents.map((a) => ({ value: a.id, label: a.name + (a.connected ? "" : " (off)"), disabled: !a.connected }))}
           />
           <button className="btn btn-primary h-6 shrink-0 whitespace-nowrap px-2.5 text-[0.6875rem]" disabled={!agentId || state.running || !connected.length} onClick={() => agentId && run(agentId)} data-testid="run-analysis">
-            {state.running ? <Spinner size={12} /> : <Icon name="refresh" size={12} />} {state.items ? "Re-run" : "Run"}
+            {state.running ? <Spinner size={12} /> : <Icon name="refresh" size={12} />} {state.items ? "Re-Run" : "Run"}
           </button>
         </div>
       </div>
 
       {!state.items ? (
-        <EmptyState icon="aireview" title={state.running ? "Reviewing the model…" : "No analysis yet"} hint="Run a design review to get recommendations for design, structure, materials, cost, constructability and code, plus detected errors." />
+        <EmptyState icon="aireview" title={state.running ? "Reviewing the model…" : "No Analysis Yet"} hint="Run a design review to get recommendations for design, structure, materials, cost, constructability and code, plus detected errors." />
       ) : state.items.length === 0 ? (
-        <EmptyState icon="aireview" title="Nothing to review" hint="Add elements to the model first." />
+        <EmptyState icon="aireview" title="Nothing to Review" hint="Add elements to the model first." />
       ) : (
         <ul>
           {state.items.map((r) => {

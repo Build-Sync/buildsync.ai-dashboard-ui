@@ -16,6 +16,8 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { EmptyState, Pill, Spinner } from "@/components/ui/controls";
+import { sceneOf } from "@/lib/draw/scene-of";
+import { detectClashes } from "@/lib/reports";
 import { sleep } from "@/lib/utils";
 import { useWs, useWsApi } from "@/lib/store/workspace-provider";
 import { cn } from "@/lib/utils";
@@ -30,12 +32,16 @@ export function Clash() {
   const [running, setRunning] = useState(false);
   const hard = clashes.filter((c) => c.kind === "HARD").length;
 
+  // a real check of the model: every MEP run against the structure (lib/reports.ts)
   const rerun = async () => {
     setRunning(true);
-    await sleep(900);
+    await sleep(60);
+    const found = detectClashes(sceneOf(ws.getState()));
+    ws.getState().edit("Clash detection", (st) => ({ project: { ...st.project, clashes: found } }));
     setRunning(false);
-    ctx.app.getState().log("ok", `✓ Clash detection: ${hard} hard · ${clashes.length - hard} soft`);
-    ctx.app.getState().toast(`Found ${clashes.length} clashes (${hard} hard)`, clashes.length ? "warn" : "ok");
+    const h = found.filter((c) => c.kind === "HARD").length;
+    ctx.app.getState().log("ok", `✓ Clash detection: ${found.length} found, ${h} hard · ${found.length - h} soft (MEP runs against the structure)`);
+    ctx.app.getState().toast(`Found ${found.length} clashes (${h} hard)`, found.length ? "warn" : "ok");
   };
 
   return (
@@ -45,11 +51,11 @@ export function Clash() {
           <b className="mono text-bad">{hard}</b> hard · <b className="mono text-warn">{clashes.length - hard}</b> soft
         </div>
         <button className="btn h-6 text-[0.6875rem]" disabled={running} onClick={rerun}>
-          {running ? <Spinner size={12} /> : <Icon name="refresh" size={12} />} Run detection
+          {running ? <Spinner size={12} /> : <Icon name="refresh" size={12} />} Run Detection
         </button>
       </div>
       {clashes.length === 0 ? (
-        <EmptyState icon="clash" title="No clashes" hint="Run clash detection after you add MEP and structure to the model." />
+        <EmptyState icon="clash" title="No Clashes" hint="Run clash detection after you add MEP and structure to the model." />
       ) : (
         <ul>
           {clashes.map((c) => (

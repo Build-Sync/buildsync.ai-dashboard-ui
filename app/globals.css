@@ -4,7 +4,8 @@
  * WHAT   The global stylesheet: Tailwind v4 import, the design tokens (colours, sizes, fonts) as CSS
  *        variables for the dark default and the light and high-contrast themes, the Tailwind theme
  *        mapping, base element styles, small reusable component classes (.btn, .input, .pill, .kbd),
- *        animations, and the OS-specific adjustments (font fallbacks, scrollbars, forced colours).
+ *        animations, the OS-specific adjustments (font fallbacks, scrollbars, forced colours) and the print rules
+ *        of Export → PDF (only [data-print-area], the drawing, is printed).
  * FOR    Every screen. Components use Tailwind utilities that resolve to these variables, so a theme is
  *        just a different set of variable values under [data-theme="…"] on <html>.
  *
@@ -65,6 +66,12 @@
   --h-doctabs: 1.75rem; /* 28px */
   --w-explorer: 16.75rem; /* 268px */
   --w-palette: 20.625rem; /* 330px */
+  /* large window sizes follow the screen width (see lib/layout.ts); a minimised side window is a 32px strip */
+  --w-explorer-large: clamp(22rem, 30vw, 30rem);
+  --w-palette-large: clamp(28rem, 38vw, 42rem);
+  --w-dock-min: 2rem;
+  --h-timeline-large: clamp(24rem, 55vh, 40rem);
+  --h-cmdlog-large: clamp(9rem, 22vh, 16rem); /* history area of the large command line */
   --h-status: 1.625rem; /* 26px */
 }
 
@@ -220,6 +227,10 @@ textarea {
 @utility gutter-stable {
   scrollbar-gutter: stable;
 }
+/* a slim scrollbar for strips that scroll sideways (the layout tabs): thin on Windows and Linux, overlay on macOS */
+@utility thin-scroll {
+  scrollbar-width: thin;
+}
 /* drawing surfaces keep their own colours under Windows forced-colors (Contrast themes) */
 @utility bs-keep-colors {
   forced-color-adjust: none;
@@ -343,5 +354,24 @@ textarea {
   [aria-checked="true"] {
     outline: 2px solid Highlight;
     outline-offset: -2px;
+  }
+}
+
+/* Export → PDF: print only the drawing on screen (the model view or the open sheet), filling the page */
+@media print {
+  @page {
+    margin: 10mm;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  [data-print-area],
+  [data-print-area] * {
+    visibility: visible !important;
+  }
+  [data-print-area] {
+    position: fixed !important;
+    inset: 0 !important;
+    background: #fff !important;
   }
 }

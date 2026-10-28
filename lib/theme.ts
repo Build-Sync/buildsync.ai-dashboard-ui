@@ -12,7 +12,7 @@
  *        public/theme-boot.js repeats `resolveTheme` in plain JS so the right theme is on <html> before
  *        first paint; keep the two in step.
  *
- * DEBUG  - "Match system" stays dark: check `matchMedia("(prefers-color-scheme: light)")` in the console.
+ * DEBUG  - "Match System" stays dark: check `matchMedia("(prefers-color-scheme: light)")` in the console.
  *        - Theme flashes on load: the boot script (public/theme-boot.js) did not run or was edited out of step.
  *
  * Author: Giordano Bertin-Maurice

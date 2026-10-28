@@ -55,7 +55,7 @@ export function DocumentTabs() {
   };
 
   return (
-    <div role="tablist" aria-label="Open documents" className="flex h-[var(--h-doctabs)] shrink-0 items-end gap-px border-b border-line bg-app pl-1" data-testid="doc-tabs">
+    <div role="tablist" aria-label="Open Documents" className="flex h-[var(--h-doctabs)] shrink-0 items-end gap-px border-b border-line bg-app pl-1" data-testid="doc-tabs">
       <button
         role="tab"
         aria-selected={doc === "start"}
@@ -85,10 +85,10 @@ export function DocumentTabs() {
               }
             }}
             className={cn("group flex h-6 max-w-[13rem] cursor-pointer items-center gap-1.5 rounded-t-md pl-3 pr-1 text-[0.75rem] transition-colors", active ? "bg-viewport font-semibold text-t1 shadow-[inset_0_2px_0_var(--accent)]" : "text-t2 hover:bg-t1/10 hover:text-t1")}
-            {...tip(label.fileName, dirty ? "Unsaved changes" : "Click to switch, middle-click to close", "CLOSE")}
+            {...tip(label.fileName, dirty ? "Unsaved Changes" : "Click to switch, middle-click to close", "CLOSE")}
           >
             <span className="truncate">{label.name}</span>
-            {dirty && <span className="size-1.5 shrink-0 rounded-full bg-warn" aria-label="Unsaved changes" />}
+            {dirty && <span className="size-1.5 shrink-0 rounded-full bg-warn" aria-label="Unsaved Changes" />}
             <button
               aria-label={`Close ${label.name}`}
               onClick={(e) => {
@@ -103,10 +103,10 @@ export function DocumentTabs() {
         );
       })}
       <button
-        aria-label="New project"
+        aria-label="New Project"
         onClick={() => run("NEW")}
         className="mb-px grid size-5 place-items-center rounded text-t2 hover:bg-t1/10 hover:text-t1"
-        {...tip("New project", "Create a new project tab", "NEW")}
+        {...tip("New Project", "Create a new project tab", "NEW")}
       >
         <Icon name="plus" size={13} />
       </button>

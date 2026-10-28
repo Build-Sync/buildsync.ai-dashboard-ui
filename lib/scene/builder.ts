@@ -263,7 +263,8 @@ export function prismBounds(p: Prism): { min: V3; max: V3 } {
     : { min: [x0, p.a0, b0], max: [x1, p.a1, b1] };
 }
 
-function buildElements(prisms: Prism[]): SceneElement[] {
+/** Group prisms into selectable elements (one per id) with their bounding boxes. */
+export function buildElements(prisms: Prism[]): SceneElement[] {
   const map = new Map<string, SceneElement>();
   for (const p of prisms) {
     const { min, max } = prismBounds(p);

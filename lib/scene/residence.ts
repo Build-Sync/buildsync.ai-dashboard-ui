@@ -2,8 +2,9 @@
  * lib/scene/residence.ts
  *
  * WHAT   Builds the sample two-storey house: 24' × 32' footprint, CMU walls, gable roof (high-velocity
- *        hurricane zone), with foundation, framing, MEP runs, devices, trees, contours, callouts, stress
- *        points, room labels, door swings, dimensions and grid.
+ *        hurricane zone), with foundation (continuous footings, stem walls, slab on grade, column bases), framing,
+ *        MEP runs, devices, a septic system in the back yard (tank, sewer, drain field: lib/scene/site.ts), trees,
+ *        contours, callouts, stress points, room labels, door swings, dimensions and grid.
  * FOR    getScene("residence"). The ridge runs along Y so the section plane (Y = const) cuts the roof as a
  *        profile.
  * DEBUG  - Walls and beams are split at column positions so nothing overlaps; pseudo-openings carve those
@@ -15,6 +16,7 @@
  * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
  */
 import { SceneBuilder, type BaseOpts, type Opening } from "./builder";
+import { addSeptic } from "./site";
 import type { Category, LevelKey, PhaseKey, Scene, V2, V3 } from "./types";
 
 /* Residence_2BR_Miami — two storeys, 24' × 32' footprint, CMU walls, gable roof (HVHZ).
@@ -323,9 +325,9 @@ export function buildResidence(): Scene {
   /* ── MEP ────────────────────────────────────────────────────────────── */
   const E = (id: string, pts: V3[], level: LevelKey, label?: string) =>
     b.run({ id, layer: "electrical", kind: "electrical", pts, phase: "mep", level, label });
-  E("E-L1-OUT", [[8.5, 0.95, 5], [8.5, 0.95, 1.5], [1.1, 0.95, 1.5], [1.1, 31.2, 1.5], [12.9, 31.2, 1.5]], "level1", "20A receptacle circuit");
+  E("E-L1-OUT", [[8.5, 0.95, 5], [8.5, 0.95, 1.5], [1.1, 0.95, 1.5], [1.1, 31.2, 1.5], [12.9, 31.2, 1.5]], "level1", "20A Receptacle Circuit");
   E("E-L1-OUT2", [[8.5, 0.95, 1.5], [23, 0.95, 1.5], [23, 13.5, 1.5], [23, 21.4, 1.5]], "level1");
-  E("E-L1-LTG", [[8.5, 0.95, 5], [8.5, 0.95, 8.4], [8, 9, 8.4], [8, 25, 8.4], [19, 25, 8.4], [19, 6, 8.4], [8, 9, 8.4]], "level1", "15A lighting circuit");
+  E("E-L1-LTG", [[8.5, 0.95, 5], [8.5, 0.95, 8.4], [8, 9, 8.4], [8, 25, 8.4], [19, 25, 8.4], [19, 6, 8.4], [8, 9, 8.4]], "level1", "15A Lighting Circuit");
   E("E-RISER", [[1.1, 0.95, 1.5], [1.1, 0.95, 11.25]], "level2", "Riser");
   E("E-L2-OUT", [[1.1, 0.95, 11.25], [1.1, 14.2, 11.25], [23, 14.2, 11.25], [23, 0.95, 11.25]], "level2");
   E("E-L2-LTG", [[12, 8, 18.8], [12, 24, 18.8], [5, 24, 18.8], [5, 5, 18.8], [18, 5, 18.8]], "level2");
@@ -337,11 +339,11 @@ export function buildResidence(): Scene {
 
   const P = (id: string, pts: V3[], level: LevelKey, label?: string, underground = false) =>
     b.run({ id, layer: "plumbing", kind: "plumbing", pts, phase: "mep", level, label, underground });
-  P("P-SUP-1", [[19, -30, -2.2], [19, 17, -2.2], [19, 17, 1.2]], "foundation", '1" water service', true);
+  P("P-SUP-1", [[19, -30, -2.2], [19, 17, -2.2], [19, 17, 1.2]], "foundation", '1" Water Service', true);
   P("P-SUP-2", [[19, 17, -2.2], [3, 17, -2.2], [3, 30.3, -2.2], [3, 30.3, 2.8]], "foundation", undefined, true);
-  P("P-WST", [[16.5, 19.2, -1.8], [12.5, 19.2, -1.8], [12.5, 40, -2.5], [12, 66, -3]], "foundation", '4" PVC waste', true);
+  P("P-WST", [[16.5, 19.2, -1.8], [12.5, 19.2, -1.8], [12.5, D + 0.5, -2.1]], "foundation", '4" PVC Waste to the Septic Tank', true);
   P("P-WST-K", [[3.5, 30.3, -1.8], [12.5, 30.3, -1.8]], "foundation", undefined, true);
-  P("P-VENT", [[16.5, 19.2, -1.8], [16.5, 19.2, 23.4]], "level1", '3" vent stack');
+  P("P-VENT", [[16.5, 19.2, -1.8], [16.5, 19.2, 23.4]], "level1", '3" Vent Stack');
   b.device({ id: "PF-WC", layer: "plumbing", kind: "plumbing", at: [16.0, 19.2, 1.2], shape: "fixture", label: "WC", phase: "mep", level: "level1" });
   b.device({ id: "PF-TUB", layer: "plumbing", kind: "plumbing", at: [20.2, 20.9, 1.2], shape: "fixture", label: "Tub", phase: "mep", level: "level1" });
   b.device({ id: "PF-SINK", layer: "plumbing", kind: "plumbing", at: [3, 30.5, 3], shape: "fixture", label: "Sink", phase: "mep", level: "level1" });
@@ -349,7 +351,7 @@ export function buildResidence(): Scene {
 
   const H = (id: string, pts: V3[], level: LevelKey, label?: string) =>
     b.run({ id, layer: "hvac", kind: "hvac", pts, phase: "mep", level, label, width: 3 });
-  H("H-L1", [[20, 18.5, 10.9], [20, 18.5, 8.4], [8, 18.5, 8.4], [8, 3, 8.4]], "level1", '12" supply trunk');
+  H("H-L1", [[20, 18.5, 10.9], [20, 18.5, 8.4], [8, 18.5, 8.4], [8, 3, 8.4]], "level1", '12" Supply Trunk');
   H("H-L1-B", [[20, 18.5, 8.4], [20, 5, 8.4]], "level1");
   H("H-L2", [[20, 18.5, 17.8], [6, 18.5, 17.8], [6, 4, 17.8]], "level2");
   H("H-L2-B", [[14, 18.5, 17.8], [14, 4, 17.8], [18, 4, 17.8]], "level2");
@@ -358,7 +360,7 @@ export function buildResidence(): Scene {
     b.device({ id: `HR-${i}`, layer: "hvac", kind: "hvac", at, shape: "outlet", phase: "mep", level: at[2] > 12 ? "level2" : "level1" }),
   );
 
-  b.run({ id: "FP-RISER", layer: "fire", kind: "fire", pts: [[1.2, 1.2, -1.8], [1.2, 1.2, 19.1]], phase: "mep", level: "level1", label: "2\" sprinkler riser" });
+  b.run({ id: "FP-RISER", layer: "fire", kind: "fire", pts: [[1.2, 1.2, -1.8], [1.2, 1.2, 19.1]], phase: "mep", level: "level1", label: "2\" Sprinkler Riser" });
   b.run({ id: "FP-L1", layer: "fire", kind: "fire", pts: [[1.2, 1.2, 8.7], [1.2, 30, 8.7], [22, 30, 8.7]], phase: "mep", level: "level1" });
   b.run({ id: "FP-L1-B", layer: "fire", kind: "fire", pts: [[1.2, 1.2, 8.7], [22, 1.2, 8.7]], phase: "mep", level: "level1" });
   b.run({ id: "FP-L2", layer: "fire", kind: "fire", pts: [[1.2, 1.2, 19.1], [1.2, 30, 19.1], [22, 30, 19.1]], phase: "mep", level: "level2" });
@@ -366,22 +368,31 @@ export function buildResidence(): Scene {
     b.device({ id: `FH-${i}`, layer: "fire", kind: "fire", at, shape: "head", phase: "mep", level: at[2] > 12 ? "level2" : "level1" }),
   );
 
+  /* ── septic system in the back yard, past the patio ─────────────────── */
+  addSeptic(b, {
+    id: "SEP",
+    grade: GRADE,
+    tank: { at: [6, 44], len: 9, wid: 5.5, depth: 5, gallons: 1000 },
+    outlet: [12.5, D + 0.5],
+    field: { x0: -6, y0: 51, rows: 3, len: 30, spacing: 5 },
+  });
+
   /* ── annotation data (plan view, callouts, stress) ──────────────────── */
   b.callouts.push(
     { id: "CO-1", at: [0.3, 14, -3], dx: -120, dy: 54, text: "Footing 24\" × 12\"", sub: "#5 @ 12\" o.c. each way" },
     { id: "CO-2", at: [0.2, 6, 19.6], dx: -130, dy: -42, text: "Hurricane clips @ 24\" o.c.", sub: "FBC HVHZ · 175 mph" },
     { id: "CO-3", at: [0.3, 22, 5], dx: -128, dy: 6, text: "8\" CMU · #5 @ 32\"", sub: "grouted cells" },
-    { id: "CO-4", at: [8.5, 0.95, 5], dx: 60, dy: 78, text: "200A main panel", sub: "Panel MDP · 40 circuits" },
-    { id: "CO-5", at: [12.5, 40, -2.5], dx: 70, dy: 40, text: "4\" PVC waste", sub: "¼\":12 slope to sewer" },
+    { id: "CO-4", at: [8.5, 0.95, 5], dx: 60, dy: 78, text: "200A Main Panel", sub: "Panel MDP · 40 circuits" },
+    { id: "CO-5", at: [12.5, D + 0.5, -2.1], dx: 70, dy: 40, text: "4\" PVC Building Sewer", sub: "¼\":12 slope to the septic tank" },
     { id: "CO-6", at: [20, 18.5, 10.9], dx: 82, dy: -62, text: "AHU-1 · 3-ton", sub: "supply 1,200 CFM" },
   );
   b.stress.push(
-    { id: "SP-1", at: [0.3, 0.3, 0.2], ksi: 3.1, elementId: "C-A1", label: "Column base" },
-    { id: "SP-2", at: [0.3, 16, 19.7], ksi: 4.2, elementId: "W-L2-W", label: "Roof-to-wall connection" },
-    { id: "SP-3", at: [6.8, 18, 8.6], ksi: 4.8, elementId: "B-L1-M1", label: "Floor beam midspan" },
-    { id: "SP-4", at: [23.7, 16, 19.9], ksi: 3.6, elementId: "TRS-08", label: "Truss heel" },
-    { id: "SP-5", at: [16, 22.6, 9.4], ksi: 2.7, elementId: "SL-L2", label: "Stair opening corner" },
-    { id: "SP-6", at: [0, 0, -2.6], ksi: 1.9, elementId: "F-FT-S", label: "Footing corner" },
+    { id: "SP-1", at: [0.3, 0.3, 0.2], ksi: 3.1, elementId: "C-A1", label: "Column Base" },
+    { id: "SP-2", at: [0.3, 16, 19.7], ksi: 4.2, elementId: "W-L2-W", label: "Roof-to-Wall Connection" },
+    { id: "SP-3", at: [6.8, 18, 8.6], ksi: 4.8, elementId: "B-L1-M1", label: "Floor Beam Midspan" },
+    { id: "SP-4", at: [23.7, 16, 19.9], ksi: 3.6, elementId: "TRS-08", label: "Truss Heel" },
+    { id: "SP-5", at: [16, 22.6, 9.4], ksi: 2.7, elementId: "SL-L2", label: "Stair Opening Corner" },
+    { id: "SP-6", at: [0, 0, -2.6], ksi: 1.9, elementId: "F-FT-S", label: "Footing Corner" },
     { id: "SP-7", at: [12, 16, ridgeZ + 0.1], ksi: 2.2, elementId: "R-01", label: "Ridge" },
   );
   b.rooms.push(
@@ -395,7 +406,7 @@ export function buildResidence(): Scene {
     { id: "RM-8", name: "LOFT", at: [8, 23], area: 200, level: "level2" },
     { id: "RM-9", name: "AHU / STORAGE", at: [20, 18.7], area: 28, level: "level2" },
   );
-  for (const lvl of ["level1", "level2"] as const) {
+  for (const lvl of ["foundation", "level1", "level2"] as const) {
     b.dims.push(
       { id: `DM-W-${lvl}`, from: [0, 0], to: [W, 0], offset: -3.2, text: "24'-0\"", level: lvl },
       { id: `DM-D-${lvl}`, from: [0, 0], to: [0, D], offset: -3.2, text: "32'-0\"", level: lvl },

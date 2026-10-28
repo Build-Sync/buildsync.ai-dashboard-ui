@@ -1,11 +1,15 @@
 /**
  * e2e/harness.mjs
  *
- * WHAT   The shared Playwright harness behind the browser suites (routing.mjs, workspace.mjs, platform.mjs):
+ * WHAT   The shared Playwright harness behind the browser suites (routing, workspace, tools, layout, site, buttons,
+ *        platform):
  *        launches Chromium once, exposes the page and small helpers (`check`, `eq`, `has`, `open`, screenshots…),
  *        collects console and page errors, and prints a PASS/FAIL summary through `finish()`.
  * FOR    Every suite imports this file. A check also fails when the page logs a console error or throws while
- *        it runs, unless the check names the message it expects (`{ allow: [/status of 404/] }`).
+ *        it runs, unless the check names the message it expects (`{ allow: [/status of 404/] }`). Requests to the
+ *        map tile servers, the elevation tiles (a generated rolling ground) and the address search (Site palette)
+ *        are answered locally, so no suite reaches out. The first-run tutorial prompt is marked seen before every
+ *        page load; a check that wants it sets sessionStorage "e2e-first-run".
  *
  * OPTIONS (flags work in every shell; the environment variables are the older spelling of the same thing)
  *        --base=URL        app origin                             BASE            default http://localhost:3000
@@ -24,7 +28,46 @@
  */
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { deflateSync } from "node:zlib";
 import { chromium, firefox, webkit } from "playwright-core";
+
+/* ── a tiny PNG writer (RGB, 8 bits), for the fake elevation tiles ─────── */
+const CRC = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+const crc32 = (buf) => {
+  let c = 0xffffffff;
+  for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+const pngChunk = (type, data) => {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(body));
+  return Buffer.concat([len, body, crc]);
+};
+/** A w × h RGB PNG whose pixel (x, y) is `rgb(x, y)` → [r, g, b]. */
+export function pngRGB(w, h, rgb) {
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const [r, g, b] = rgb(x, y);
+      const o = y * (w * 3 + 1) + 1 + x * 3;
+      raw[o] = r;
+      raw[o + 1] = g;
+      raw[o + 2] = b;
+    }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), pngChunk("IHDR", ihdr), pngChunk("IDAT", deflateSync(raw)), pngChunk("IEND", Buffer.alloc(0))]);
+}
 
 const args = process.argv.slice(2);
 const flag = (name) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -47,6 +90,28 @@ export const browser = await launcher
     process.exit(2);
   });
 export const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+// the first-run tutorial prompt would cover the workspace: mark it seen, unless a check sets "e2e-first-run" to see it
+await ctx.addInitScript(() => {
+  try {
+    if (!sessionStorage.getItem("e2e-first-run")) localStorage.setItem("bs.tour", "done");
+  } catch {
+    /* storage blocked: the app treats the tour as seen */
+  }
+});
+// map tiles and the address search are answered here, so the suites never depend on (or load) outside servers
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
+const CORS = { "Access-Control-Allow-Origin": "*" };
+await ctx.route(/server.arcgisonline.com|tile.openstreetmap.org/, (r) => r.fulfill({ status: 200, contentType: "image/png", headers: CORS, body: PNG }));
+await ctx.route(/nominatim.openstreetmap.org/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+// elevation tiles (Site from Map): rolling ground of 11–29 m, continuous across tile edges
+await ctx.route(/elevation-tiles-prod\/terrarium\/\d+\/\d+\/\d+\.png/, (r) => {
+  const [, tx, ty] = /\/(\d+)\/(\d+)\/(\d+)\.png/.exec(r.request().url()).slice(1).map(Number);
+  const body = pngRGB(256, 256, (x, y) => {
+    const m = 20 + 6 * Math.sin((tx * 256 + x) / 60) + 3 * Math.cos((ty * 256 + y) / 45) + 32768;
+    return [Math.floor(m / 256), Math.floor(m) % 256, Math.floor((m % 1) * 256)];
+  });
+  return r.fulfill({ status: 200, contentType: "image/png", headers: CORS, body });
+});
 export const page = await ctx.newPage();
 
 const errors = [];

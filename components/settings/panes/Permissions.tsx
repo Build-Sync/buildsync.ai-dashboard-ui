@@ -23,7 +23,7 @@ import type { Role } from "@/lib/types";
 import { cn, initials } from "@/lib/utils";
 import { Group } from "../rows";
 
-const CAPS = ["Edit model", "Run analyses", "Approve / sign", "Manage connectors", "Share", "Billing"] as const;
+const CAPS = ["Edit Model", "Run Analyses", "Approve / Sign", "Manage Connectors", "Share", "Billing"] as const;
 const MATRIX: Record<Role, boolean[]> = {
   owner: [true, true, true, true, true, true],
   engineer: [true, true, false, true, true, false],

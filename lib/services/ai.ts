@@ -115,8 +115,8 @@ export async function routePrompt(args: {
       costDelta: 18_400,
       elementIds: ["W-L1-S", "W-L1-N", "W-L1-W", "W-L1-E", "W-L2-S", "W-L2-N", "W-L2-W", "W-L2-E"],
       changes: [
-        { target: "Exterior walls (8 elements)", from: 'CMU 8" grouted', to: 'Cast-in-place concrete 8", f\'c 5000 psi' },
-        { target: "Wall colour", from: "Light grey", to: "Concrete grey" },
+        { target: "Exterior Walls (8 Elements)", from: 'CMU 8" grouted', to: 'Cast-in-place concrete 8", f\'c 5000 psi' },
+        { target: "Wall Colour", from: "Light grey", to: "Concrete grey" },
         { target: "Cost", from: "$118,400", to: "$136,800 (+$18,400)" },
         { target: "Schedule", from: "CMU: 6 weeks", to: "Formwork + pour: 5 weeks" },
       ],
@@ -131,8 +131,8 @@ export async function routePrompt(args: {
       costDelta: 41_000,
       elementIds: ["C-A1", "C-C1", "C-A3", "C-C3", "B-L1-S", "B-L1-N", "B-L2-S", "B-L2-N"],
       changes: [
-        { target: "Tie columns (10)", from: "Reinforced concrete 4-#6", to: "HSS 8×8×3/8 steel columns" },
-        { target: "Bond beams (8)", from: "Reinforced concrete", to: "W10×22 steel beams" },
+        { target: "Tie Columns (10)", from: "Reinforced concrete 4-#6", to: "HSS 8×8×3/8 steel columns" },
+        { target: "Bond Beams (8)", from: "Reinforced concrete", to: "W10×22 steel beams" },
         { target: "Cost", from: "$392,000", to: "$433,000 (+$41,000)" },
         { target: "Corrosion", from: "n/a", to: "Hot-dip galvanized (coastal HVHZ)" },
       ],
@@ -147,7 +147,7 @@ export async function routePrompt(args: {
       costDelta: 2_900,
       elementIds: ["B-L1-M1"],
       changes: [
-        { target: "B-L1-M1 span", from: "18'-0\" clear", to: "9'-0\" + 9'-0\" (post at mid-span)" },
+        { target: "B-L1-M1 Span", from: "18'-0\" clear", to: "9'-0\" + 9'-0\" (post at mid-span)" },
         { target: "Deflection", from: "0.92\"", to: "0.11\" (limit 0.60\")" },
         { target: "Cost", from: "—", to: "+$2,900" },
       ],

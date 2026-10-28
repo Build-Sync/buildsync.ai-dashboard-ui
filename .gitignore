@@ -55,3 +55,4 @@ next-env.d.ts
 
 # browser suite screenshots
 /e2e/.shots/
+.gstack/

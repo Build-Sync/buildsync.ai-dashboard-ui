@@ -44,8 +44,9 @@ interface Row {
 const ROWS: Row[] = [
   { label: "New Project", icon: "newfile", shortcut: "Ctrl+N", run: "NEW" },
   { label: "Open Project", icon: "open", shortcut: "Ctrl+O", run: "OPEN" },
+  { label: "Open File…", icon: "upload", run: "OPENFILE" },
   { label: "Save", icon: "save", shortcut: "Ctrl+S", run: "QSAVE" },
-  { label: "Save As", icon: "save", shortcut: "Ctrl+Shift+S", run: "SAVEAS" },
+  { label: "Save As…", icon: "download", shortcut: "Ctrl+Shift+S", run: "SAVEAS" },
   {
     label: "Import",
     icon: "upload",
@@ -104,7 +105,7 @@ function AppMenuPanel({ anchorRef }: { anchorRef: RefObject<HTMLButtonElement | 
   };
 
   return (
-    <div data-app-menu role="menu" aria-label="Application menu" className="anim-pop fixed left-1.5 top-[calc(var(--h-banner,0rem)+var(--h-appbar)+0.1rem)] z-[85] flex w-[30rem] overflow-hidden rounded-xl border border-line bg-chrome shadow-pop">
+    <div data-app-menu role="menu" aria-label="Application Menu" className="anim-pop fixed left-1.5 top-[calc(var(--h-banner,0rem)+var(--h-appbar)+0.1rem)] z-[85] flex w-[30rem] overflow-hidden rounded-xl border border-line bg-chrome shadow-pop">
       <div className="w-[15.5rem] shrink-0 border-r border-soft py-1.5">
         {ROWS.map((r) => (
           <div key={r.label}>

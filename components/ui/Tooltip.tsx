@@ -1,10 +1,10 @@
 /**
  * components/ui/Tooltip.tsx
  *
- * WHAT   The tooltip system. tip(title, description, command) returns data attributes that components spread
- *        onto a button; one delegated pointer listener in <TooltipLayer/> shows a fixed-position bubble 250 ms
+ * WHAT   The tooltip system. tip(title, description, command, shortcut) returns data attributes that components
+ *        spread onto a button; one delegated pointer listener in <TooltipLayer/> shows a fixed-position bubble 250 ms
  *        after hovering (60 ms when moving between neighbouring buttons) in the format Title / description /
- *        "Command: NAME".
+ *        "Shortcut: Alt+W" / "Command: NAME" (the shortcut drawn for this OS).
  * FOR    Every ribbon button, toolbar icon and status-bar item. Settings → Display → Tooltips chooses off,
  *        basic (no command line) or extended. Mounted once in app/layout.tsx.
  * DEBUG  - No tooltip on an element: it needs a data-tip attribute (spread {...tip("Title", "Description",
@@ -19,6 +19,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getPlatform } from "@/lib/platform";
+import { formatCombo } from "@/lib/shortcuts";
 import { useApp } from "@/lib/store/app-provider";
 
 /* Tooltip format (spec §9): Title / one-line description / `Command: NAME`.
@@ -30,16 +32,18 @@ export interface TipProps {
   "data-tip": string;
   "data-tip-desc"?: string;
   "data-tip-cmd"?: string;
+  "data-tip-key"?: string;
 }
 
 /**
  * Data attributes for a tooltip: spread them on an element, e.g. <button {...tip("Wall", "Draw a wall",
  * "WALL")}>.
  */
-export function tip(title: string, desc?: string, cmd?: string): TipProps {
+export function tip(title: string, desc?: string, cmd?: string, shortcut?: string): TipProps {
   const p: TipProps = { "data-tip": title };
   if (desc) p["data-tip-desc"] = desc;
   if (cmd) p["data-tip-cmd"] = cmd;
+  if (shortcut) p["data-tip-key"] = shortcut;
   return p;
 }
 
@@ -47,6 +51,8 @@ interface Shown {
   title: string;
   desc?: string;
   cmd?: string;
+  /** the shortcut, canonical ("Alt+W+N"): drawn for this OS */
+  combo?: string;
   x: number;
   y: number;
   above: boolean;
@@ -87,6 +93,7 @@ export function TooltipLayer() {
         title,
         desc: el.getAttribute("data-tip-desc") ?? undefined,
         cmd: el.getAttribute("data-tip-cmd") ?? undefined,
+        combo: el.getAttribute("data-tip-key") ?? undefined,
         x: r.left,
         y: above ? r.top - 6 : below,
         above,
@@ -140,6 +147,12 @@ export function TooltipLayer() {
     >
       <div className="font-semibold text-t1">{shown.title}</div>
       {shown.desc && <div className="mt-0.5 text-t2">{shown.desc}</div>}
+      {shown.combo && (
+        <div className="mt-1 text-[0.625rem]">
+          <span className="text-t3">Shortcut: </span>
+          <kbd className="kbd">{formatCombo(shown.combo, getPlatform())}</kbd>
+        </div>
+      )}
       {mode === "extended" && shown.cmd && (
         <div className="mono mt-1 text-[0.625rem] text-accent">
           <span className="text-t3">Command: </span>

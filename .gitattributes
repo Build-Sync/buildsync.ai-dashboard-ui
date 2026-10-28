@@ -5,7 +5,8 @@
 #        file into CRLF, which shows up as whole-file diffs and confuses tools. Source is always LF; images and
 #        fonts are never touched.
 # DEBUG  - Every line of a file shows as changed: your editor or Git config converted line endings; this file
-#          forces LF on checkout, so run `git add --renormalize .` once.
+#          forces LF on checkout, so run `git add --renormalize .` once. `npm run check:portable` lists any CRLF
+#          file that slipped in.
 #
 # Author: Giordano Bertin-Maurice
 # Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
@@ -19,3 +20,9 @@
 *.ico binary
 *.woff binary
 *.woff2 binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.zip binary

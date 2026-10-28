@@ -1,7 +1,7 @@
 /**
  * components/shared/InviteDialog.tsx
  *
- * WHAT   The "Invite a member" dialog: name, e-mail and role. A PE Reviewer must also give a licence number and
+ * WHAT   The "Invite a Member" dialog: name, e-mail and role. A PE Reviewer must also give a licence number and
  *        jurisdiction so sign-offs can be verified (spec section 11.10). Validates, adds the member to the app
  *        store, toasts and logs.
  * FOR    Opened from Settings → Permissions, the workspace Share dialog and the Collaborate → Share ribbon
@@ -58,7 +58,7 @@ export function InviteDialog({ onClose, z = 70 }: { onClose: () => void; z?: num
 
   return (
     <Modal
-      title="Invite a member"
+      title="Invite a Member"
       subtitle="They'll get an email with a link to this workspace."
       onClose={onClose}
       z={z}
@@ -69,7 +69,7 @@ export function InviteDialog({ onClose, z = 70 }: { onClose: () => void; z?: num
             Cancel
           </button>
           <button className="btn btn-primary" onClick={submit}>
-            Send invite
+            Send Invite
           </button>
         </>
       }
@@ -101,14 +101,14 @@ export function InviteDialog({ onClose, z = 70 }: { onClose: () => void; z?: num
           <div className="grid grid-cols-2 gap-3 rounded-lg border border-warn/40 bg-warn/5 p-3">
             <p className="col-span-2 text-[0.6875rem] text-t2">PE Reviewers must supply a license number and jurisdiction so sign-offs can be verified.</p>
             <label className="block">
-              <span className="label-xs">License number</span>
+              <span className="label-xs">License Number</span>
               <input className="input mono mt-1" value={license} onChange={(e) => setLicense(e.target.value)} placeholder="PE-12345" />
               {tried && !peOk && <span className="mt-1 block text-[0.6875rem] text-bad">License number required.</span>}
             </label>
             <div>
               <span className="label-xs">Jurisdiction</span>
               <div className="mt-1">
-                <Select<string> label="License jurisdiction" className="w-full" value={jur} onChange={setJur} options={["Florida", "Antigua & Barbuda", "Bahamas", "Jamaica", "Puerto Rico"].map((j) => ({ value: j, label: j }))} />
+                <Select<string> label="License Jurisdiction" className="w-full" value={jur} onChange={setJur} options={["Florida", "Antigua & Barbuda", "Bahamas", "Jamaica", "Puerto Rico"].map((j) => ({ value: j, label: j }))} />
               </div>
             </div>
           </div>

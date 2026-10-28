@@ -46,7 +46,7 @@ export function StartPage() {
               <Icon name="plus" size={20} />
             </span>
             <span>
-              <span className="block text-[0.875rem] font-semibold text-t1">New project</span>
+              <span className="block text-[0.875rem] font-semibold text-t1">New Project</span>
               <span className="block text-[0.75rem] text-t2">Blank model with your default jurisdiction</span>
             </span>
           </button>
@@ -61,7 +61,7 @@ export function StartPage() {
           </button>
         </div>
 
-        <h2 className="label-xs mb-2 mt-8">Recent projects</h2>
+        <h2 className="label-xs mb-2 mt-8">Recent Projects</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           {RECENT_PROJECTS.map((p) => (
             <button key={p.id} onClick={() => open(p.id, p.name)} className="group overflow-hidden rounded-xl border border-line bg-panel text-left transition-colors hover:border-accent">

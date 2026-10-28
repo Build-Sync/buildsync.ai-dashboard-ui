@@ -5,7 +5,7 @@
  *        a Windows precision touchpad and a Magic Mouse all feel right:
  *        - `createWheelClassifier` tells a notched mouse wheel from smooth trackpad scrolling.
  *        - `interpretWheel` turns one `wheel` event into zoom + pan amounts according to the user's
- *          "Scroll gesture" setting (Auto / Zoom / Pan).
+ *          "Scroll Gesture" setting (Auto / Zoom / Pan).
  *        Pinch on a trackpad arrives as a wheel event with ctrlKey set (Chromium, Firefox); Safari sends
  *        its own gesture events instead, which the viewport handles separately.
  * FOR    components/workspace/Viewport/ModelViewport.tsx (the only caller); unit tests in lib/input.test.ts.

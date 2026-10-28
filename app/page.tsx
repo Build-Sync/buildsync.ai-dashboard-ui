@@ -28,10 +28,10 @@ export default function Home() {
       </p>
       <div className="flex flex-wrap gap-3">
         <Link href="/demo" className="btn btn-primary h-9 px-4 text-[0.8125rem]">
-          Try the demo, no signup needed
+          Try the Demo, No Signup Needed
         </Link>
         <Link href="/app" className="btn h-9 px-4 text-[0.8125rem]">
-          Open workspace
+          Open Workspace
         </Link>
       </div>
       <p className="text-[0.75rem] text-t3">This page is a placeholder. The marketing site is specced separately.</p>

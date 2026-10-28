@@ -41,15 +41,15 @@ export function Simulation() {
   return (
     <div data-testid="palette-simulation">
       <div className="space-y-3 border-b border-soft p-3">
-        <Field label="Scenario type">
-          <Select<SimType> label="Scenario type" className="w-full" value={setup.type} onChange={(v) => ws.getState().setSimSetup({ type: v })} options={SIM_TYPES.map((t) => ({ value: t.id, label: t.label }))} />
+        <Field label="Scenario Type">
+          <Select<SimType> label="Scenario Type" className="w-full" value={setup.type} onChange={(v) => ws.getState().setSimSetup({ type: v })} options={SIM_TYPES.map((t) => ({ value: t.id, label: t.label }))} />
         </Field>
         <Field label={`Intensity (${meta.unit})`}>
           <Slider label="Intensity" min={meta.min} max={meta.max} step={meta.step} value={setup.intensity} suffix="" onChange={(v) => ws.getState().setSimSetup({ intensity: v })} />
         </Field>
         <Field label={`Direction · from the ${compassName(setup.direction)}`}>
           <div className="flex items-center gap-3">
-            <svg viewBox="-34 -34 68 68" className={cn("size-16 shrink-0", !directional && "opacity-40")} aria-label="Direction dial">
+            <svg viewBox="-34 -34 68 68" className={cn("size-16 shrink-0", !directional && "opacity-40")} aria-label="Direction Dial">
               <circle r="30" fill="var(--bg-panel-alt)" stroke="var(--line)" />
               <rect x="-6" y="-6" width="12" height="12" rx="1" fill="none" stroke="var(--t3)" />
               {DIRS.map(({ d, l }) => {
@@ -84,9 +84,9 @@ export function Simulation() {
             {running ? <Spinner size={13} /> : <Icon name="play" size={13} />} Run
           </button>
           <button className="btn h-7 flex-1" disabled={!result} aria-pressed={vectors} onClick={() => ws.getState().patch({ simVectors: !vectors })}>
-            <Icon name={vectors ? "showall" : "hide"} size={13} /> Show in viewport
+            <Icon name={vectors ? "showall" : "hide"} size={13} /> Show in Viewport
           </button>
-          <button className="btn h-7 px-2" disabled={!result} aria-label="Clear results" onClick={() => ws.getState().clearSim()}>
+          <button className="btn h-7 px-2" disabled={!result} aria-label="Clear Results" onClick={() => ws.getState().clearSim()}>
             <Icon name="close" size={13} />
           </button>
         </div>
@@ -96,7 +96,7 @@ export function Simulation() {
         <div className="p-3" data-testid="sim-result">
           <div className="flex items-start gap-2">
             <Pill tone={result.breachRisk > 40 ? "bad" : result.breachRisk > 15 ? "warn" : "ok"} className="mt-px shrink-0">
-              {result.breachRisk > 40 ? "Fails" : result.breachRisk > 15 ? "At risk" : "Holds"}
+              {result.breachRisk > 40 ? "Fails" : result.breachRisk > 15 ? "At Risk" : "Holds"}
             </Pill>
             <p className="text-[0.75rem] font-medium leading-snug text-t1">{result.headline}</p>
           </div>
@@ -112,7 +112,7 @@ export function Simulation() {
           </dl>
           {result.failurePoints.length > 0 && (
             <div className="mt-3">
-              <h4 className="label-xs mb-1">Failure points</h4>
+              <h4 className="label-xs mb-1">Failure Points</h4>
               <ul className="space-y-1.5">
                 {result.failurePoints.map((f) => (
                   <li key={f.label} className="rounded-md border border-bad/30 bg-bad/10 px-2 py-1.5">
@@ -124,7 +124,7 @@ export function Simulation() {
             </div>
           )}
           <button className="mt-3 flex items-center gap-1 text-[0.75rem] text-accent hover:underline" aria-expanded={calc} onClick={() => setCalc(!calc)}>
-            <Icon name={calc ? "chevDown" : "chevRight"} size={12} /> {calc ? "Hide calculations" : "Show calculations"}
+            <Icon name={calc ? "chevDown" : "chevRight"} size={12} /> {calc ? "Hide Calculations" : "Show Calculations"}
           </button>
           {calc && (
             <pre className="anim-fade mono mt-1.5 overflow-x-auto whitespace-pre-wrap rounded-md border border-line bg-app p-2 text-[0.6875rem] leading-relaxed text-t2" data-testid="sim-calc">

@@ -2,7 +2,7 @@
  * lib/input.test.ts
  *
  * WHAT   Unit tests for lib/input.ts: telling a mouse wheel from a trackpad, the sticky classifier, and how a
- *        wheel / pinch event becomes zoom and pan amounts under each "Scroll gesture" setting.
+ *        wheel / pinch event becomes zoom and pan amounts under each "Scroll Gesture" setting.
  * FOR    `npm test`. Protects the viewport's scroll feel on Mac trackpads, Windows precision touchpads and mice.
  *
  * Author: Giordano Bertin-Maurice

@@ -46,10 +46,10 @@ export const AGENT_META: Record<AgentId, AgentMeta> = {
     glyph: "C",
     description: "Careful reasoning for code review, structural explanations and long plan sets.",
     methods: ["api-key", "oauth", "mcp"],
-    tags: ["API key", "OAuth", "MCP"],
+    tags: ["API Key", "OAuth", "MCP"],
     needsBaseUrl: false,
     keyPrefix: "sk-ant-",
-    note: "Default agent",
+    note: "Default Agent",
   },
   chatgpt: {
     id: "chatgpt",
@@ -59,7 +59,7 @@ export const AGENT_META: Record<AgentId, AgentMeta> = {
     glyph: "G",
     description: "General-purpose agent, strong at estimating, quantity take-off and summaries.",
     methods: ["api-key", "oauth"],
-    tags: ["API key", "OAuth"],
+    tags: ["API Key", "OAuth"],
     needsBaseUrl: false,
     keyPrefix: "sk-",
   },
@@ -71,11 +71,11 @@ export const AGENT_META: Record<AgentId, AgentMeta> = {
     glyph: "K",
     description: "Long-context agent for big drawing sets and specification documents.",
     methods: ["api-key", "mcp"],
-    tags: ["API key", "OpenAI-compatible"],
+    tags: ["API Key", "OpenAI-Compatible"],
     baseUrl: "https://api.moonshot.ai/v1",
     needsBaseUrl: true,
     keyPrefix: "sk-",
-    note: "OpenAI-compatible base URL",
+    note: "OpenAI-Compatible Base URL",
   },
   gemini: {
     id: "gemini",
@@ -85,19 +85,19 @@ export const AGENT_META: Record<AgentId, AgentMeta> = {
     glyph: "Ge",
     description: "Multimodal agent that reads site photos, survey sheets and scanned plans.",
     methods: ["api-key"],
-    tags: ["API key"],
+    tags: ["API Key"],
     needsBaseUrl: false,
     keyPrefix: "AIza",
   },
   local: {
     id: "local",
-    name: "Local model",
+    name: "Local Model",
     vendor: "Ollama / LM Studio",
     color: "#586274",
     glyph: "L",
     description: "Runs on your machine. Nothing leaves your network. Key optional.",
     methods: ["api-key", "mcp"],
-    tags: ["Local URL", "Key optional"],
+    tags: ["Local URL", "Key Optional"],
     baseUrl: "http://localhost:11434/v1",
     needsBaseUrl: true,
     keyOptional: true,
@@ -105,7 +105,7 @@ export const AGENT_META: Record<AgentId, AgentMeta> = {
   },
   custom: {
     id: "custom",
-    name: "Custom agent",
+    name: "Custom Agent",
     vendor: "Any",
     color: "#C0507A",
     glyph: "+",
@@ -114,7 +114,7 @@ export const AGENT_META: Record<AgentId, AgentMeta> = {
     tags: ["Base URL", "MCP"],
     needsBaseUrl: true,
     keyPrefix: "",
-    note: "User-defined name",
+    note: "User-Defined Name",
   },
 };
 
@@ -123,20 +123,20 @@ export const AGENT_ORDER: AgentId[] = ["claude", "chatgpt", "kimi", "gemini", "l
 
 /** Display name of each connection method. */
 export const METHOD_LABEL: Record<AuthMethod, string> = {
-  "api-key": "API key",
+  "api-key": "API Key",
   oauth: "Sign in (OAuth)",
-  mcp: "MCP / endpoint URL",
+  mcp: "MCP / Endpoint URL",
 };
 
 /** Display name of each model tier. */
-export const MODEL_TIER_LABEL = { auto: "Auto", fast: "Fast", capable: "Most capable" } as const;
+export const MODEL_TIER_LABEL = { auto: "Auto", fast: "Fast", capable: "Most Capable" } as const;
 
 /** What an agent may do, with the default for each scope. */
 export const PERMISSION_SCOPES = [
-  { id: "read-model", label: "Read model & selection", default: true },
-  { id: "run-checks", label: "Run compliance & cost checks", default: true },
-  { id: "edit-model", label: "Edit the model (always asks first)", default: false },
-  { id: "read-files", label: "Read attached survey/geotech files", default: false },
+  { id: "read-model", label: "Read Model & Selection", default: true },
+  { id: "run-checks", label: "Run Compliance & Cost Checks", default: true },
+  { id: "edit-model", label: "Edit the Model (Always Asks First)", default: false },
+  { id: "read-files", label: "Read Attached Survey/Geotech Files", default: false },
 ] as const;
 
 /** Initial connection state: Claude + ChatGPT connected (spec: "● 2 agents"). */
@@ -160,11 +160,11 @@ export function initialAgents(): Agent[] {
 
 /** Display name of each routable task. */
 export const TASK_LABEL: Record<TaskKind, string> = {
-  compliance: "Compliance & code review",
-  cost: "Cost estimation",
+  compliance: "Compliance & Code Review",
+  cost: "Cost Estimation",
   p2p: "Prompt-to-Plan",
-  stress: "Stress-test explanations",
-  chat: "Command-line chat",
+  stress: "Stress-Test Explanations",
+  chat: "Command-Line Chat",
 };
 
 /** Which agent handles each task by default ("active" = the active agent). */
@@ -176,7 +176,7 @@ export const DEFAULT_ROUTING: Record<TaskKind, AgentId | "active"> = {
   chat: "active",
 };
 
-/** A planned integration shown as "Notify me". */
+/** A planned integration shown as "Notify Me". */
 export interface OtherIntegration {
   id: string;
   name: string;

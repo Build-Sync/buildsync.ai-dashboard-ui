@@ -47,7 +47,7 @@ function ChangePlan({ onClose }: { onClose: () => void }) {
   const price = governmentPrice(Number(pop.replace(/\D/g, "")) || 0);
   return (
     <Modal
-      title="Change plan"
+      title="Change Plan"
       subtitle="Prices are not final."
       onClose={onClose}
       z={80}
@@ -66,7 +66,7 @@ function ChangePlan({ onClose }: { onClose: () => void }) {
               onClose();
             }}
           >
-            Switch plan
+            Switch Plan
           </button>
         </>
       }
@@ -93,7 +93,7 @@ function ChangePlan({ onClose }: { onClose: () => void }) {
       </div>
       {pick === "government" && (
         <div className="anim-fade mt-4 rounded-lg border border-line bg-panel-alt p-3">
-          <div className="label-xs">Estimate your annual contract</div>
+          <div className="label-xs">Estimate Your Annual Contract</div>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-[0.75rem] text-t2">
               Population
@@ -127,7 +127,7 @@ export function AccountPane() {
   const [pwErr, setPwErr] = useState<string | null>(null);
   const [sessions, setSessions] = useState([
     { id: "s1", label: "Chrome on macOS · Miami, US", current: true, at: "Active now" },
-    { id: "s2", label: "BuildSync mobile · iPhone", current: false, at: "2 days ago" },
+    { id: "s2", label: "BuildSync Mobile · iPhone", current: false, at: "2 days ago" },
     { id: "s3", label: "Firefox on Windows · Nassau, BS", current: false, at: "Last week" },
   ]);
   const [del, setDel] = useState(false);
@@ -159,7 +159,7 @@ export function AccountPane() {
             <button className="mt-1.5 text-[0.6875rem] text-accent hover:underline" onClick={() => fileRef.current?.click()}>
               Change
             </button>
-            <input ref={fileRef} type="file" accept="image/*" className="sr-only" aria-label="Upload avatar" onChange={(e) => { const f = e.target.files?.[0]; if (f) setAvatar(URL.createObjectURL(f)); }} />
+            <input ref={fileRef} type="file" accept="image/*" className="sr-only" aria-label="Upload Avatar" onChange={(e) => { const f = e.target.files?.[0]; if (f) setAvatar(URL.createObjectURL(f)); }} />
           </div>
           <div className="grid flex-1 gap-3 sm:grid-cols-2">
             <label className="block">
@@ -173,7 +173,7 @@ export function AccountPane() {
             </label>
             <div className="sm:col-span-2">
               <button className="btn btn-primary" disabled={!emailOk || !name.trim()} onClick={() => { app.getState().setProfile({ name: name.trim(), email: email.trim() }); app.getState().toast("Profile saved"); }}>
-                Save profile
+                Save Profile
               </button>
             </div>
           </div>
@@ -189,22 +189,22 @@ export function AccountPane() {
             <div className="mono mt-0.5 text-[0.75rem] text-t3">{seatInfo.price}</div>
           </div>
           <button className="btn" onClick={() => setPlan(true)} data-testid="change-plan">
-            Change plan
+            Change Plan
           </button>
         </div>
       </Group>
 
-      <Group title="PE credentials" aside={verified ? <Pill tone="ok">Verified</Pill> : <Pill tone="warn">Not verified</Pill>}>
+      <Group title="PE Credentials" aside={verified ? <Pill tone="ok">Verified</Pill> : <Pill tone="warn">Not Verified</Pill>}>
         <p className="mb-3 text-[0.75rem] text-t2">Optional, but needed to sign. A license number unlocks the PE sign-off workflow and lets you hide the advisory banner.</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block">
-            <span className="label-xs">License number</span>
+            <span className="label-xs">License Number</span>
             <input className="input mono mt-1" value={lic} onChange={(e) => setLic(e.target.value)} placeholder="PE-12345" />
           </label>
           <div>
             <span className="label-xs">Jurisdiction</span>
             <div className="mt-1">
-              <Select<string> label="License jurisdiction" className="w-full" value={jur} onChange={setJur} options={["Florida", "Antigua & Barbuda", "Bahamas", "Jamaica", "Puerto Rico"].map((j) => ({ value: j, label: j }))} />
+              <Select<string> label="License Jurisdiction" className="w-full" value={jur} onChange={setJur} options={["Florida", "Antigua & Barbuda", "Bahamas", "Jamaica", "Puerto Rico"].map((j) => ({ value: j, label: j }))} />
             </div>
           </div>
           <label className="block">
@@ -213,12 +213,12 @@ export function AccountPane() {
           </label>
         </div>
         <button className="btn mt-3" onClick={() => { app.getState().setProfile({ peLicense: lic.trim(), peJurisdiction: jur, peExpiry: exp }); app.getState().toast(lic.trim().length >= 4 ? "PE credentials saved" : "PE credentials cleared", "info"); }}>
-          Save credentials
+          Save Credentials
         </button>
       </Group>
 
       <Group title="Billing">
-        <Row label="Payment method" help="Mock card. No payments are processed in this build.">
+        <Row label="Payment Method" help="Mock card. No payments are processed in this build.">
           <div className="flex items-center gap-3">
             <span className="mono flex items-center gap-2 text-[0.8125rem] text-t1">
               <Icon name="card" size={16} className="text-t3" /> Visa •••• 4242 <span className="text-t3">08/28</span>
@@ -263,9 +263,9 @@ export function AccountPane() {
       <Group title="Security">
         <Row label="Password" help="Use at least 10 characters." stack>
           <div className="grid w-full gap-2 sm:grid-cols-3">
-            <input type="password" autoComplete="current-password" className="input" placeholder="Current password" aria-label="Current password" value={pw.cur} onChange={(e) => setPw({ ...pw, cur: e.target.value })} />
-            <input type="password" autoComplete="new-password" className="input" placeholder="New password" aria-label="New password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
-            <input type="password" autoComplete="new-password" className="input" placeholder="Repeat new password" aria-label="Repeat new password" value={pw.again} onChange={(e) => setPw({ ...pw, again: e.target.value })} />
+            <input type="password" autoComplete="current-password" className="input" placeholder="Current Password" aria-label="Current Password" value={pw.cur} onChange={(e) => setPw({ ...pw, cur: e.target.value })} />
+            <input type="password" autoComplete="new-password" className="input" placeholder="New Password" aria-label="New Password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
+            <input type="password" autoComplete="new-password" className="input" placeholder="Repeat New Password" aria-label="Repeat New Password" value={pw.again} onChange={(e) => setPw({ ...pw, again: e.target.value })} />
           </div>
           {pwErr && (
             <p role="alert" className="mt-1.5 w-full text-[0.75rem] text-bad">
@@ -273,41 +273,41 @@ export function AccountPane() {
             </p>
           )}
           <button className="btn mt-2" onClick={changePw}>
-            Change password
+            Change Password
           </button>
         </Row>
-        <Row label="Two-factor authentication" help="Require a code from an authenticator app at sign-in.">
-          <Switch label="Two-factor authentication" checked={profile.twoFactor} onChange={(v) => { app.getState().setProfile({ twoFactor: v }); app.getState().toast(v ? "Two-factor enabled" : "Two-factor disabled", "info"); }} />
+        <Row label="Two-Factor Authentication" help="Require a code from an authenticator app at sign-in.">
+          <Switch label="Two-Factor Authentication" checked={profile.twoFactor} onChange={(v) => { app.getState().setProfile({ twoFactor: v }); app.getState().toast(v ? "Two-factor enabled" : "Two-factor disabled", "info"); }} />
         </Row>
         <div className="py-3.5">
-          <div className="text-[0.8125rem] font-medium text-t1">Active sessions</div>
+          <div className="text-[0.8125rem] font-medium text-t1">Active Sessions</div>
           <ul className="mt-2 divide-y divide-soft overflow-hidden rounded-lg border border-line">
             {sessions.map((s) => (
               <li key={s.id} className="flex items-center gap-3 bg-panel-alt px-4 py-2.5 text-[0.75rem]">
                 <Icon name={s.label.includes("mobile") ? "phone" : "monitor"} size={15} className="text-t3" />
                 <span className="flex-1 text-t1">{s.label}</span>
                 <span className="text-t3">{s.at}</span>
-                {s.current ? <Pill tone="info">This device</Pill> : <button className="text-bad hover:underline" onClick={() => { setSessions((l) => l.filter((x) => x.id !== s.id)); app.getState().toast("Session revoked", "info"); }}>Revoke</button>}
+                {s.current ? <Pill tone="info">This Device</Pill> : <button className="text-bad hover:underline" onClick={() => { setSessions((l) => l.filter((x) => x.id !== s.id)); app.getState().toast("Session revoked", "info"); }}>Revoke</button>}
               </li>
             ))}
           </ul>
         </div>
       </Group>
 
-      <Group title="Danger zone">
+      <Group title="Danger Zone">
         <div className="rounded-xl border border-bad/40 p-4">
-          <Row label="Export my data" help="Download your profile, settings and project list as JSON.">
+          <Row label="Export My Data" help="Download your profile, settings and project list as JSON.">
             <button className="btn" onClick={() => { saveJson("buildsync-my-data.json", { profile: { name: profile.name, email: profile.email }, seat, settings: app.getState().settings, tabs: app.getState().tabs }); app.getState().toast("Data exported"); }}>
               <Icon name="download" size={13} /> Export
             </button>
           </Row>
           <div className="flex items-center justify-between gap-4 pt-3.5">
             <div>
-              <div className="text-[0.8125rem] font-medium text-bad">Delete account</div>
+              <div className="text-[0.8125rem] font-medium text-bad">Delete Account</div>
               <p className="mt-0.5 text-[0.75rem] text-t3">Permanently removes your account and projects. This can&apos;t be undone.</p>
             </div>
             <button className="btn btn-danger" onClick={() => setDel(true)}>
-              Delete account
+              Delete Account
             </button>
           </div>
         </div>
@@ -327,7 +327,7 @@ export function AccountPane() {
                 Cancel
               </button>
               <button className="btn btn-danger" disabled={confirmText !== "DELETE"} onClick={() => { setDel(false); setConfirmText(""); app.getState().toast("Account deletion is stubbed in this build", "info"); }}>
-                Delete forever
+                Delete Forever
               </button>
             </>
           }

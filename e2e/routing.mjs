@@ -22,10 +22,24 @@
  */
 import { check, ctx, eq, finish, has, path, page, shot, ready, BASE } from "./harness.mjs";
 
+/** A ribbon button by name, opening the folded panel that holds it when the window is too narrow to show it. */
+async function ribbonButton(name) {
+  const inline = page.getByTestId("ribbon").getByRole("button", { name });
+  if (await inline.count()) return inline.first();
+  const folded = page.getByTestId("ribbon-collapsed");
+  for (let i = 0; i < (await folded.count()); i++) {
+    await folded.nth(i).click();
+    const b = page.getByTestId("ribbon-flyout").getByRole("button", { name });
+    if (await b.count()) return b.first();
+    await page.keyboard.press("Escape");
+  }
+  throw new Error(`no ribbon button "${name}" on this tab`);
+}
+
 await check("landing page renders with links", async () => {
   const r = await page.goto(BASE + "/", { waitUntil: "networkidle" });
   eq(r.status(), 200);
-  await page.getByRole("link", { name: /Try the demo/ }).waitFor();
+  await page.getByRole("link", { name: /Try the Demo/ }).waitFor();
 });
 
 await check("/app redirects to the demo project when there is no last project", async () => {
@@ -52,7 +66,7 @@ await check("/demo shows the demo banner and the full workspace", async () => {
   await page.goto(BASE + "/demo", { waitUntil: "networkidle" });
   await ready();
   await page.getByTestId("demo-banner").waitFor();
-  has(await page.getByTestId("demo-banner").innerText(), "Start free to save");
+  has(await page.getByTestId("demo-banner").innerText(), "saves in this browser");
   for (const id of ["appbar", "ribbon-tabs", "ribbon", "doc-tabs", "explorer", "viewport", "palettes", "cmdline", "statusbar"]) await page.getByTestId(id).waitFor();
   await shot("e2e-demo");
 });
@@ -64,7 +78,7 @@ await check("ribbon tab click updates the URL query", async () => {
 });
 
 await check("Stress Test command opens the palette (?panel=stress-test) and runs", async () => {
-  await page.getByTestId("ribbon").getByRole("button", { name: "Stress Test" }).click();
+  await (await ribbonButton("Stress Test")).click();
   await page.waitForFunction(() => location.search.includes("panel=stress-test"));
   await page.getByTestId("run-stress").click();
   await page.getByTestId("stress-result").waitFor({ timeout: 10000 });
@@ -79,15 +93,15 @@ await check("Apply in model resolves the failing beam", async () => {
 });
 
 await check("section cut toggles via ribbon and URL (?section=1)", async () => {
-  await page.getByRole("tab", { name: "View" }).click();
-  await page.getByTestId("ribbon").getByRole("button", { name: "Section Cut" }).click();
+  await page.getByRole("tab", { name: "View", exact: true }).click();
+  await (await ribbonButton("Section Cut")).click();
   await page.waitForFunction(() => location.search.includes("section=1"));
   has(await page.getByText("SECTION CUT ACTIVE").innerText(), "Y = 12.0 ft");
   await shot("e2e-section");
 });
 
 await check("2D plan switches view (?view=2d) and ViewCube label updates", async () => {
-  await page.getByTestId("ribbon").getByRole("button", { name: "2D Plan" }).click();
+  await (await ribbonButton("2D Plan")).click();
   await page.waitForFunction(() => location.search.includes("view=2d"));
   await page.waitForFunction(() => document.querySelector('[data-testid="view-label"]')?.textContent?.startsWith("2D"));
   await shot("e2e-2d");

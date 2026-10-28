@@ -2,7 +2,7 @@
  * components/ui/Menu.tsx
  *
  * WHAT   Floating menu building blocks: <Menu> (a position:fixed popup that closes on an outside press, Esc or
- *        window blur), <MenuItem> (icon or check, label, optional shortcut or hint), <MenuSep>, <MenuLabel>,
+ *        window blur; that Esc goes no further, so it does not also cancel a running tool), <MenuItem> (icon or check, label, optional shortcut or hint), <MenuSep>, <MenuLabel>,
  *        and anchorOf(element) to open a menu under a trigger.
  * FOR    The right-click context menu, the agent selector, viewport label menus and other pop-ups. Shortcuts
  *        are passed as canonical combos (shortcut="Ctrl+K") and drawn per OS (⌘K on a Mac) by ShortcutLabel.
@@ -76,7 +76,10 @@ export function Menu({
       if (!ref.current?.contains(e.target as Node)) onClose();
     };
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // Esc closes only the menu: it must not also cancel the running tool or clear the selection
+      e.stopPropagation();
+      onClose();
     };
     document.addEventListener("pointerdown", down, true);
     document.addEventListener("keydown", key, true);

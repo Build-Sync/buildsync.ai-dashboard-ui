@@ -23,10 +23,10 @@ export default function NotFound() {
       <p className="text-[0.8125rem] text-t2">The link may be out of date, or the project hasn&apos;t been created yet.</p>
       <div className="flex gap-2">
         <Link href="/app" className="btn btn-primary">
-          Open the workspace
+          Open the Workspace
         </Link>
         <Link href="/demo" className="btn">
-          Try the demo
+          Try the Demo
         </Link>
       </div>
     </main>

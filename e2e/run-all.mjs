@@ -1,7 +1,7 @@
 /**
  * e2e/run-all.mjs
  *
- * WHAT   Runs the three browser suites (routing, workspace, platform) one after another, passing every
+ * WHAT   Runs the seven browser suites (routing, workspace, tools, layout, site, buttons, platform) one after another, passing every
  *        command-line argument (--base=…, --chromium=…, a name filter) on to each, and exits non-zero if any
  *        suite failed. Prints a one-line verdict per suite at the end.
  * FOR    `npm run e2e`. A chained npm script (a && b && c) would only forward trailing arguments to the last
@@ -15,7 +15,7 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const suites = ["routing", "workspace", "platform"];
+const suites = ["routing", "workspace", "tools", "layout", "site", "buttons", "platform"];
 const forwarded = process.argv.slice(2);
 const results = [];
 

@@ -57,9 +57,9 @@ export function PeSignoffModal() {
   const stateOf = (id: string) => status[id];
 
   return (
-    <Modal title="PE sign-off" subtitle="Life-safety and load-bearing items need a licensed Professional Engineer. All AI output stays advisory until signed." onClose={close} width="40rem">
+    <Modal title="PE Sign-Off" subtitle="Life-safety and load-bearing items need a licensed Professional Engineer. All AI output stays advisory until signed." onClose={close} width="40rem">
       <div role="tablist" className="mb-3 flex gap-4 border-b border-soft">
-        {([["queue", "Review queue"], ["sign", "Sign"], ["audit", "Audit trail"]] as const).map(([id, label]) => (
+        {([["queue", "Review Queue"], ["sign", "Sign"], ["audit", "Audit Trail"]] as const).map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={cn("-mb-px border-b-2 pb-1.5 text-[0.75rem] font-medium", tab === id ? "border-accent text-t1" : "border-transparent text-t2 hover:text-t1")}>
             {label}
             {id === "queue" && flagged.length > 0 && <span className="mono ml-1.5 rounded-full bg-warn/20 px-1.5 text-[0.625rem] text-warn">{flagged.length}</span>}
@@ -84,7 +84,7 @@ export function PeSignoffModal() {
                       </div>
                     </div>
                     <Pill tone={stateOf(c.id) === "signed" ? "ok" : stateOf(c.id) === "reviewed" ? "info" : stateOf(c.id) === "queued" ? "warn" : "neutral"}>
-                      {stateOf(c.id) === "signed" ? "Signed" : stateOf(c.id) === "reviewed" ? "Reviewed" : stateOf(c.id) === "queued" ? "Awaiting PE" : "Not sent"}
+                      {stateOf(c.id) === "signed" ? "Signed" : stateOf(c.id) === "reviewed" ? "Reviewed" : stateOf(c.id) === "queued" ? "Awaiting PE" : "Not Sent"}
                     </Pill>
                   </li>
                 ))}
@@ -107,34 +107,34 @@ export function PeSignoffModal() {
           ) : (
             <>
               <label className="block">
-                <span className="label-xs">PE notes and edits</span>
+                <span className="label-xs">PE Notes and Edits</span>
                 <textarea className="input mt-1 h-auto resize-none py-1.5" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Increase beam depth to 10″. Clip schedule approved with 24″ o.c. spacing." />
               </label>
               <div className="grid grid-cols-3 gap-3">
                 <label className="block">
-                  <span className="label-xs">License number</span>
+                  <span className="label-xs">License Number</span>
                   <input className="input mono mt-1" value={license} onChange={(e) => setLicense(e.target.value)} />
                 </label>
                 <div>
                   <span className="label-xs">Jurisdiction</span>
                   <div className="mt-1">
-                    <Select<string> label="License jurisdiction" className="w-full" value={jur} onChange={setJur} options={["Florida", "Antigua & Barbuda", "Bahamas", "Jamaica"].map((j) => ({ value: j, label: j }))} />
+                    <Select<string> label="License Jurisdiction" className="w-full" value={jur} onChange={setJur} options={["Florida", "Antigua & Barbuda", "Bahamas", "Jamaica"].map((j) => ({ value: j, label: j }))} />
                   </div>
                 </div>
                 <div>
                   <span className="label-xs">Date</span>
-                  <input className="input mono mt-1" readOnly value={new Date().toISOString().slice(0, 10)} aria-label="Signature date" />
+                  <input className="input mono mt-1" readOnly value={new Date().toISOString().slice(0, 10)} aria-label="Signature Date" />
                 </div>
               </div>
               <label className="flex items-start gap-2 text-[0.75rem] text-t2">
                 <input type="checkbox" className="mt-0.5 accent-[var(--accent)]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />I have reviewed the {queued.length} queued item(s) and accept professional responsibility for the signed result.
               </label>
               <div className="flex justify-end gap-2">
-                <button className="btn" disabled={!note.trim()} onClick={() => { ws.getState().peAdvance(queued.map((c) => c.id), "reviewed", note.trim(), pe?.name ?? "PE reviewer"); setNote(""); }}>
-                  Save review
+                <button className="btn" disabled={!note.trim()} onClick={() => { ws.getState().peAdvance(queued.map((c) => c.id), "reviewed", note.trim(), pe?.name ?? "PE Reviewer"); setNote(""); }}>
+                  Save Review
                 </button>
-                <button className="btn btn-primary" disabled={!agree || license.trim().length < 4} onClick={() => { ws.getState().peAdvance(queued.map((c) => c.id), "signed", `${license} · ${jur}`, pe?.name ?? "PE reviewer"); setTab("audit"); }}>
-                  <Icon name="pesign" size={13} /> Sign digitally
+                <button className="btn btn-primary" disabled={!agree || license.trim().length < 4} onClick={() => { ws.getState().peAdvance(queued.map((c) => c.id), "signed", `${license} · ${jur}`, pe?.name ?? "PE Reviewer"); setTab("audit"); }}>
+                  <Icon name="pesign" size={13} /> Sign Digitally
                 </button>
               </div>
             </>
@@ -164,11 +164,11 @@ export function ApprovalsModal() {
   const status = useWs((s) => s.peStatus);
   const anySigned = Object.values(status).includes("signed");
   const rows = [
-    { name: "PE seal: structural", by: "R. Okafor, PE", tone: anySigned ? "ok" : "warn", label: anySigned ? "Signed" : "Awaiting PE" },
-    { name: "Zoning and setbacks", by: "City of Miami Planning", tone: "ok", label: "Approved" },
-    { name: "Building permit", by: "Miami-Dade Building Dept.", tone: "neutral", label: "Not submitted" },
-    { name: "Fire marshal review", by: "Miami-Dade Fire Rescue", tone: "neutral", label: "Not submitted" },
-    { name: "Owner sign-off", by: "Alvarez Family Trust", tone: "warn", label: "Pending" },
+    { name: "PE Seal: Structural", by: "R. Okafor, PE", tone: anySigned ? "ok" : "warn", label: anySigned ? "Signed" : "Awaiting PE" },
+    { name: "Zoning and Setbacks", by: "City of Miami Planning", tone: "ok", label: "Approved" },
+    { name: "Building Permit", by: "Miami-Dade Building Dept.", tone: "neutral", label: "Not Submitted" },
+    { name: "Fire Marshal Review", by: "Miami-Dade Fire Rescue", tone: "neutral", label: "Not Submitted" },
+    { name: "Owner Sign-Off", by: "Alvarez Family Trust", tone: "warn", label: "Pending" },
   ] as const;
   return (
     <Modal title="Approvals" subtitle="Everything required before construction" onClose={() => ws.getState().closeModal()} width="30rem">
@@ -204,10 +204,10 @@ export function ScheduleModal() {
         .sort((a, b) => a[0].localeCompare(b[0])),
     [scene, tab],
   );
-  const head = ["Mark", "Type", "Size (W × H)", "Level", "Material / rating"];
+  const head = ["Mark", "Type", "Size (W × H)", "Level", "Material / Rating"];
   return (
     <Modal
-      title="Door / window schedule"
+      title="Door / Window Schedule"
       subtitle="Generated from the model. It updates when elements change."
       onClose={() => ws.getState().closeModal()}
       width="44rem"
@@ -292,7 +292,7 @@ export function QtoModal() {
   const rows = data.map(([k, g]) => [k, String(g.n), String(Math.round(g.qty)), g.unit, fmtMoney(g.cost, currency)]);
   return (
     <Modal
-      title="Quantity take-off"
+      title="Quantity Take-Off"
       subtitle="Material quantities from the model. Unit rates are mock data."
       onClose={() => ws.getState().closeModal()}
       width="40rem"
@@ -327,7 +327,7 @@ export function QtoModal() {
             ))}
             <tr>
               <td colSpan={4} className="pt-2 text-right font-semibold text-t2">
-                Total (element take-off)
+                Total (Element Take-Off)
               </td>
               <td className="mono pt-2 text-right font-semibold text-t1">{fmtMoney(total, currency)}</td>
             </tr>
@@ -384,13 +384,13 @@ export function PromptToPlanModal({ prompt: initial }: { prompt?: string }) {
             Close
           </button>
           <button className="btn btn-primary" disabled={!plan} onClick={open}>
-            Open as new project
+            Open as New Project
           </button>
         </>
       }
     >
       <div className="flex gap-2">
-        <input data-autofocus className="input" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !busy && void run()} aria-label="Describe the building" />
+        <input data-autofocus className="input" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !busy && void run()} aria-label="Describe the Building" />
         <button className="btn btn-primary shrink-0" disabled={busy || !prompt.trim()} onClick={() => void run()}>
           {busy ? <Spinner size={13} /> : <Icon name="p2p" size={13} />} Generate
         </button>
@@ -402,7 +402,7 @@ export function PromptToPlanModal({ prompt: initial }: { prompt?: string }) {
             <Pill tone="ok">{plan.checksPassed}/{plan.checksTotal} code checks pass</Pill>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2">
-            {[["Est. cost", fmtMoney(plan.cost, currency, true)], ["Schedule", `${plan.months} months`], ["Structural", "Pre-check OK"]].map(([k, v]) => (
+            {[["Est. cost", fmtMoney(plan.cost, currency, true)], ["Schedule", `${plan.months} months`], ["Structural", "Pre-Check OK"]].map(([k, v]) => (
               <div key={k} className="rounded-lg border border-line bg-panel-alt px-3 py-2">
                 <div className="label-xs">{k}</div>
                 <div className="mono text-[0.9375rem] font-semibold text-t1">{v}</div>
@@ -443,7 +443,7 @@ export function ShareModal() {
   return (
     <Modal title={`Share ${project.name}`} subtitle="Invite people and set roles" onClose={() => ws.getState().closeModal()} width="32rem" footer={<button className="btn btn-primary" onClick={() => setInvite(true)}><Icon name="userPlus" size={13} /> Invite</button>}>
       <div className="flex gap-2">
-        <input readOnly className="input mono" value={link} aria-label="Share link" />
+        <input readOnly className="input mono" value={link} aria-label="Share Link" />
         <button className="btn shrink-0" onClick={() => { void navigator.clipboard?.writeText(link).catch(() => {}); app.getState().toast("Link copied"); }}>
           <Icon name="copy" size={13} /> Copy
         </button>

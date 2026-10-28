@@ -14,10 +14,11 @@
 "use client";
 
 import { Icon } from "@/components/icons";
-import { getScene, type LevelKey } from "@/lib/scene";
+import type { LevelKey } from "@/lib/scene";
 import { useApp } from "@/lib/store/app-provider";
 import { useWs, useWsApi } from "@/lib/store/workspace-provider";
 import { cn, fmtLength } from "@/lib/utils";
+import { useScene } from "../hooks";
 
 /* Levels: Roof +19.5 · Level 2 · Level 1 ±0.0 · Foundation −2.5 · Site −4.0.
  * Clicking a level moves the camera to that floor. */
@@ -27,7 +28,7 @@ export function LevelsList() {
   const view = useWs((s) => s.view);
   const planLevel = useWs((s) => s.plan.level);
   const units = useApp((s) => s.settings.units);
-  const scene = getScene(project.sceneKind);
+  const scene = useScene();
 
   const go = (id: string) => {
     const s = ws.getState();

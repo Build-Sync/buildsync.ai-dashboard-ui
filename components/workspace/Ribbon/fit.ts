@@ -2,7 +2,8 @@
  * components/workspace/Ribbon/fit.ts
  *
  * WHAT   The measurements and maths behind ribbon panel collapse. Like AutoCAD, when a tab is wider than the
- *        window, the right-most panels fold into one button each. This module keeps the available width, the
+ *        window, the right-most panels fold into one button each (a pinned panel, Help on Home, never folds). This
+ *        module keeps the available width, the
  *        rem size and the measured natural width of each panel (cached per tab, theme, UI scale and font load),
  *        plus a rem-based estimate used until real widths are measured.
  * FOR    RibbonPanels.tsx. The estimate makes the server render and the first browser render agree (no
@@ -102,12 +103,15 @@ export function estimatePanelRem(panel: RibbonPanel): number {
   return Math.max(w, panel.name.length * 0.36) + PANEL_CHROME;
 }
 
-/** Which panels to collapse: from the right, only while the tab doesn't fit, never one narrower than its collapsed form. */
-export function collapsePlan(widths: number[], available: number, collapsedPx: number): boolean[] {
+/**
+ * Which panels to collapse: from the right, only while the tab doesn't fit, never one narrower than its collapsed form
+ * and never a pinned one (Help on Home).
+ */
+export function collapsePlan(widths: number[], available: number, collapsedPx: number, pinned: boolean[] = []): boolean[] {
   const out = widths.map(() => false);
   let total = widths.reduce((a, b) => a + b, 0);
   for (let i = widths.length - 1; i >= 0 && total > available; i--) {
-    if (widths[i] <= collapsedPx) continue;
+    if (widths[i] <= collapsedPx || pinned[i]) continue;
     out[i] = true;
     total += collapsedPx - widths[i];
   }

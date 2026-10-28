@@ -7,7 +7,7 @@
  * FOR    The theme applier (lib/store/app-provider.tsx), the Display settings pane and the ribbon's cache key.
  *        Kept apart from lib/theme.ts so that file stays React-free and importable from server modules.
  *
- * DEBUG  "Match system" does not follow the OS while the page is open: the media-query subscription in
+ * DEBUG  "Match System" does not follow the OS while the page is open: the media-query subscription in
  *        lib/theme.ts (`subscribeOsTheme`); the server snapshot is "dark" and corrects itself after hydration.
  *
  * Author: Giordano Bertin-Maurice

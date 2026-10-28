@@ -1,9 +1,10 @@
 /**
  * lib/mock-data.ts
  *
- * WHAT   All sample content for the UI build: two sample projects (Residence_2BR_Miami and
- *        Clinic_Phase1_Antigua) with their checks, issues, clashes, comments, schedule, cost and health; a
- *        blank starter project; the recent-projects list, templates, jurisdictions and team members.
+ * WHAT   All sample content for the UI build: three sample projects (Residence_2BR_Miami, a two-storey house;
+ *        Cottage_2BR_1BA, a one-storey two-bedroom, one-bath house with a septic system; Clinic_Phase1_Antigua)
+ *        with their checks, issues, clashes, comments, schedule, cost and health; a blank starter project; the
+ *        recent-projects list, templates, jurisdictions and team members.
  * FOR    The data layer that stands in for a back end (lib/services/projects.ts hands these out). Code section
  *        numbers, costs and names are placeholders, not engineering advice.
  * DEBUG  - A project shows wrong numbers: edit RESIDENCE or CLINIC here; the status bar score is
@@ -39,11 +40,14 @@ import type {
 export const DEMO_PROJECT_ID = "residence-2br-miami";
 /** Id of the sample clinic. */
 export const CLINIC_PROJECT_ID = "clinic-phase1-antigua";
+/** Id of the sample one-storey cottage (two bedrooms, one bath). */
+export const COTTAGE_PROJECT_ID = "cottage-2br-1ba";
 
 /* ── layers ───────────────────────────────────────────────────────────── */
 const LAYER_DEFS: { id: LayerId; name: string; color: string; visible: boolean }[] = [
   { id: "topography", name: "Topography", color: "#4d6a52", visible: true },
   { id: "site", name: "Site / Trees", color: "#3f8a4e", visible: true },
+  { id: "utilities", name: "Site Utilities (septic, wells)", color: "#8d8a7c", visible: true },
   { id: "foundation", name: "Foundation", color: "#8f9bb0", visible: true },
   { id: "walls", name: "Walls", color: "#c9ced8", visible: true },
   { id: "roof", name: "Roof", color: "#b4604a", visible: true },
@@ -53,11 +57,14 @@ const LAYER_DEFS: { id: LayerId; name: string; color: string; visible: boolean }
   { id: "fire", name: "Fire", color: "#ef5b5b", visible: false },
   { id: "interior", name: "Interior", color: "#e6e1d6", visible: true },
   { id: "landscape", name: "Landscape", color: "#5fae6a", visible: true },
+  { id: "civil", name: "Roads & Drainage", color: "#8b919b", visible: true },
   { id: "furniture", name: "Furniture", color: "#a28a6c", visible: true },
   { id: "callouts", name: "Callouts / Documentation", color: "#e7eaef", visible: true },
+  { id: "drafting", name: "Drafting", color: "#cfd6e2", visible: true },
+  { id: "annotation", name: "Annotations", color: "#f0c63c", visible: true },
 ];
 
-/** A fresh copy of the 13 model layers (none locked). */
+/** A fresh copy of the model layers (none locked). */
 export function makeLayers(): Layer[] {
   return LAYER_DEFS.map((l) => ({ ...l, locked: false }));
 }
@@ -119,32 +126,32 @@ const residenceCost: CostModel = {
   basis: "Class 4 estimate · RSMeans 2026 · Miami-Dade HVHZ factor 1.18",
   materials: [
     { name: "Concrete & CMU", cost: 118_400 },
-    { name: "Roofing & framing", cost: 71_200 },
-    { name: "Windows & doors (impact)", cost: 58_900 },
-    { name: "MEP systems", cost: 62_800 },
-    { name: "Finishes & fixtures", cost: 49_300 },
+    { name: "Roofing & Framing", cost: 71_200 },
+    { name: "Windows & Doors (Impact)", cost: 58_900 },
+    { name: "MEP Systems", cost: 62_800 },
+    { name: "Finishes & Fixtures", cost: 49_300 },
   ],
   workforce: [
     { trade: "Masons", headcount: 7, months: 2.5 },
-    { trade: "Concrete crew", headcount: 6, months: 2 },
+    { trade: "Concrete Crew", headcount: 6, months: 2 },
     { trade: "Carpenters", headcount: 5, months: 2.5 },
     { trade: "Roofers", headcount: 4, months: 1 },
     { trade: "Electricians", headcount: 3, months: 1.5 },
     { trade: "Plumbers", headcount: 3, months: 1.2 },
-    { trade: "HVAC techs", headcount: 2, months: 1 },
+    { trade: "HVAC Techs", headcount: 2, months: 1 },
     { trade: "Finishers", headcount: 6, months: 2.5 },
   ],
 };
 
 const residenceSchedule: Phase[] = [
   {
-    name: "Site prep & excavation",
+    name: "Site Prep & Excavation",
     key: "site",
     start: "2027-01-11",
     end: "2027-02-08",
     tasks: [
-      { name: "Clearing & survey stake-out", start: "2027-01-11", end: "2027-01-15", trade: "Survey", cost: 6_500, crew: 3, materials: [{ name: "Stakes & lath", qty: 400, unit: "ea" }] },
-      { name: "Excavation & grading", start: "2027-01-18", end: "2027-02-05", trade: "Earthwork", cost: 21_000, crew: 5, materials: [{ name: "Structural fill", qty: 120, unit: "cy" }] },
+      { name: "Clearing & Survey Stake-Out", start: "2027-01-11", end: "2027-01-15", trade: "Survey", cost: 6_500, crew: 3, materials: [{ name: "Stakes & Lath", qty: 400, unit: "ea" }] },
+      { name: "Excavation & Grading", start: "2027-01-18", end: "2027-02-05", trade: "Earthwork", cost: 21_000, crew: 5, materials: [{ name: "Structural Fill", qty: 120, unit: "cy" }] },
     ],
   },
   {
@@ -153,9 +160,9 @@ const residenceSchedule: Phase[] = [
     start: "2027-02-08",
     end: "2027-03-08",
     tasks: [
-      { name: "Footing rebar & formwork", start: "2027-02-08", end: "2027-02-19", trade: "Concrete", cost: 24_500, crew: 6, materials: [{ name: "Rebar #5", qty: 3.2, unit: "ton" }, { name: "Lumber forms", qty: 1_800, unit: "bf" }] },
-      { name: "Footing & stem-wall pour", start: "2027-02-22", end: "2027-03-01", trade: "Concrete", cost: 31_000, crew: 7, materials: [{ name: "Concrete 4000 psi", qty: 52, unit: "cy" }] },
-      { name: "Slab on grade", start: "2027-03-02", end: "2027-03-08", trade: "Concrete", cost: 18_500, crew: 6, materials: [{ name: "Concrete 4000 psi", qty: 18, unit: "cy" }, { name: "Welded wire mesh", qty: 1_200, unit: "sf" }] },
+      { name: "Footing Rebar & Formwork", start: "2027-02-08", end: "2027-02-19", trade: "Concrete", cost: 24_500, crew: 6, materials: [{ name: "Rebar #5", qty: 3.2, unit: "ton" }, { name: "Lumber Forms", qty: 1_800, unit: "bf" }] },
+      { name: "Footing & Stem-Wall Pour", start: "2027-02-22", end: "2027-03-01", trade: "Concrete", cost: 31_000, crew: 7, materials: [{ name: "Concrete 4000 psi", qty: 52, unit: "cy" }] },
+      { name: "Slab on Grade", start: "2027-03-02", end: "2027-03-08", trade: "Concrete", cost: 18_500, crew: 6, materials: [{ name: "Concrete 4000 psi", qty: 18, unit: "cy" }, { name: "Welded Wire Mesh", qty: 1_200, unit: "sf" }] },
     ],
   },
   {
@@ -164,9 +171,9 @@ const residenceSchedule: Phase[] = [
     start: "2027-03-08",
     end: "2027-04-19",
     tasks: [
-      { name: "CMU walls, Level 1", start: "2027-03-08", end: "2027-03-31", trade: "Masonry", cost: 52_000, crew: 7, materials: [{ name: "CMU 8\"", qty: 2_100, unit: "ea" }, { name: "Grout", qty: 14, unit: "cy" }] },
-      { name: "Tie columns & bond beam", start: "2027-03-24", end: "2027-04-07", trade: "Concrete", cost: 22_500, crew: 5, materials: [{ name: "Concrete 4000 psi", qty: 16, unit: "cy" }, { name: "Rebar #6", qty: 1.4, unit: "ton" }] },
-      { name: "Level 2 slab & floor beams", start: "2027-04-08", end: "2027-04-19", trade: "Concrete", cost: 38_000, crew: 8, materials: [{ name: "Concrete 4000 psi", qty: 24, unit: "cy" }, { name: "Rebar #5", qty: 2.1, unit: "ton" }] },
+      { name: "CMU Walls, Level 1", start: "2027-03-08", end: "2027-03-31", trade: "Masonry", cost: 52_000, crew: 7, materials: [{ name: "CMU 8\"", qty: 2_100, unit: "ea" }, { name: "Grout", qty: 14, unit: "cy" }] },
+      { name: "Tie Columns & Bond Beam", start: "2027-03-24", end: "2027-04-07", trade: "Concrete", cost: 22_500, crew: 5, materials: [{ name: "Concrete 4000 psi", qty: 16, unit: "cy" }, { name: "Rebar #6", qty: 1.4, unit: "ton" }] },
+      { name: "Level 2 Slab & Floor Beams", start: "2027-04-08", end: "2027-04-19", trade: "Concrete", cost: 38_000, crew: 8, materials: [{ name: "Concrete 4000 psi", qty: 24, unit: "cy" }, { name: "Rebar #5", qty: 2.1, unit: "ton" }] },
     ],
   },
   {
@@ -175,8 +182,8 @@ const residenceSchedule: Phase[] = [
     start: "2027-04-19",
     end: "2027-05-24",
     tasks: [
-      { name: "CMU walls, Level 2", start: "2027-04-19", end: "2027-05-10", trade: "Masonry", cost: 44_000, crew: 7, materials: [{ name: "CMU 8\"", qty: 1_900, unit: "ea" }, { name: "Grout", qty: 12, unit: "cy" }] },
-      { name: "Tie columns & bond beam", start: "2027-05-06", end: "2027-05-24", trade: "Concrete", cost: 24_000, crew: 5, materials: [{ name: "Concrete 4000 psi", qty: 14, unit: "cy" }] },
+      { name: "CMU Walls, Level 2", start: "2027-04-19", end: "2027-05-10", trade: "Masonry", cost: 44_000, crew: 7, materials: [{ name: "CMU 8\"", qty: 1_900, unit: "ea" }, { name: "Grout", qty: 12, unit: "cy" }] },
+      { name: "Tie Columns & Bond Beam", start: "2027-05-06", end: "2027-05-24", trade: "Concrete", cost: 24_000, crew: 5, materials: [{ name: "Concrete 4000 psi", qty: 14, unit: "cy" }] },
     ],
   },
   {
@@ -185,8 +192,8 @@ const residenceSchedule: Phase[] = [
     start: "2027-05-24",
     end: "2027-06-28",
     tasks: [
-      { name: "Trusses & sheathing", start: "2027-05-24", end: "2027-06-11", trade: "Carpentry", cost: 36_000, crew: 5, materials: [{ name: "Roof trusses", qty: 16, unit: "ea" }, { name: "Plywood 5/8\"", qty: 1_050, unit: "sf" }] },
-      { name: "Underlayment & tile", start: "2027-06-11", end: "2027-06-28", trade: "Roofing", cost: 41_000, crew: 4, materials: [{ name: "Concrete tile", qty: 1_020, unit: "sf" }] },
+      { name: "Trusses & Sheathing", start: "2027-05-24", end: "2027-06-11", trade: "Carpentry", cost: 36_000, crew: 5, materials: [{ name: "Roof Trusses", qty: 16, unit: "ea" }, { name: "Plywood 5/8\"", qty: 1_050, unit: "sf" }] },
+      { name: "Underlayment & Tile", start: "2027-06-11", end: "2027-06-28", trade: "Roofing", cost: 41_000, crew: 4, materials: [{ name: "Concrete Tile", qty: 1_020, unit: "sf" }] },
     ],
   },
   {
@@ -195,21 +202,21 @@ const residenceSchedule: Phase[] = [
     start: "2027-06-14",
     end: "2027-07-26",
     tasks: [
-      { name: "Impact windows & doors", start: "2027-06-14", end: "2027-07-02", trade: "Glazing", cost: 58_900, crew: 4, materials: [{ name: "Impact windows", qty: 15, unit: "ea" }, { name: "Impact doors", qty: 2, unit: "ea" }] },
-      { name: "Stucco & waterproofing", start: "2027-07-05", end: "2027-07-26", trade: "Plaster", cost: 27_500, crew: 6, materials: [{ name: "Stucco", qty: 3_900, unit: "sf" }] },
-      { name: "Interior framing", start: "2027-07-05", end: "2027-07-19", trade: "Carpentry", cost: 14_000, crew: 4, materials: [{ name: "Metal studs", qty: 1_400, unit: "lf" }] },
+      { name: "Impact Windows & Doors", start: "2027-06-14", end: "2027-07-02", trade: "Glazing", cost: 58_900, crew: 4, materials: [{ name: "Impact Windows", qty: 15, unit: "ea" }, { name: "Impact Doors", qty: 2, unit: "ea" }] },
+      { name: "Stucco & Waterproofing", start: "2027-07-05", end: "2027-07-26", trade: "Plaster", cost: 27_500, crew: 6, materials: [{ name: "Stucco", qty: 3_900, unit: "sf" }] },
+      { name: "Interior Framing", start: "2027-07-05", end: "2027-07-19", trade: "Carpentry", cost: 14_000, crew: 4, materials: [{ name: "Metal Studs", qty: 1_400, unit: "lf" }] },
     ],
   },
   {
-    name: "MEP rough-in",
+    name: "MEP Rough-In",
     key: "mep",
     start: "2027-07-19",
     end: "2027-09-06",
     tasks: [
-      { name: "Electrical rough-in", start: "2027-07-19", end: "2027-08-16", trade: "Electrical", cost: 24_000, crew: 3, materials: [{ name: "Wire & conduit", qty: 6_500, unit: "lf" }] },
-      { name: "Plumbing rough-in", start: "2027-07-26", end: "2027-08-13", trade: "Plumbing", cost: 19_500, crew: 3, materials: [{ name: "PVC / PEX", qty: 1_600, unit: "lf" }] },
-      { name: "HVAC ductwork & air handler", start: "2027-08-09", end: "2027-08-30", trade: "HVAC", cost: 16_800, crew: 2, materials: [{ name: "Duct", qty: 380, unit: "lf" }] },
-      { name: "Fire sprinkler (NFPA 13D)", start: "2027-08-23", end: "2027-09-06", trade: "Fire", cost: 8_500, crew: 2 },
+      { name: "Electrical Rough-In", start: "2027-07-19", end: "2027-08-16", trade: "Electrical", cost: 24_000, crew: 3, materials: [{ name: "Wire & Conduit", qty: 6_500, unit: "lf" }] },
+      { name: "Plumbing Rough-In", start: "2027-07-26", end: "2027-08-13", trade: "Plumbing", cost: 19_500, crew: 3, materials: [{ name: "PVC / PEX", qty: 1_600, unit: "lf" }] },
+      { name: "HVAC Ductwork & Air Handler", start: "2027-08-09", end: "2027-08-30", trade: "HVAC", cost: 16_800, crew: 2, materials: [{ name: "Duct", qty: 380, unit: "lf" }] },
+      { name: "Fire Sprinkler (NFPA 13D)", start: "2027-08-23", end: "2027-09-06", trade: "Fire", cost: 8_500, crew: 2 },
     ],
   },
   {
@@ -218,16 +225,16 @@ const residenceSchedule: Phase[] = [
     start: "2027-09-06",
     end: "2027-11-15",
     tasks: [
-      { name: "Drywall & paint", start: "2027-09-06", end: "2027-10-04", trade: "Finishers", cost: 21_000, crew: 6, materials: [{ name: "Gypsum board", qty: 5_400, unit: "sf" }] },
-      { name: "Tile & flooring", start: "2027-09-27", end: "2027-10-18", trade: "Finishers", cost: 17_500, crew: 4, materials: [{ name: "Tile", qty: 1_100, unit: "sf" }] },
-      { name: "Cabinets & fixtures", start: "2027-10-11", end: "2027-11-15", trade: "Finishers", cost: 16_000, crew: 4 },
+      { name: "Drywall & Paint", start: "2027-09-06", end: "2027-10-04", trade: "Finishers", cost: 21_000, crew: 6, materials: [{ name: "Gypsum Board", qty: 5_400, unit: "sf" }] },
+      { name: "Tile & Flooring", start: "2027-09-27", end: "2027-10-18", trade: "Finishers", cost: 17_500, crew: 4, materials: [{ name: "Tile", qty: 1_100, unit: "sf" }] },
+      { name: "Cabinets & Fixtures", start: "2027-10-11", end: "2027-11-15", trade: "Finishers", cost: 16_000, crew: 4 },
     ],
   },
   {
     name: "Inspections & CO",
     start: "2027-11-15",
     end: "2027-12-06",
-    tasks: [{ name: "Final inspections & certificate of occupancy", start: "2027-11-15", end: "2027-12-06", trade: "Permitting", cost: 3_500, crew: 2 }],
+    tasks: [{ name: "Final Inspections & Certificate of Occupancy", start: "2027-11-15", end: "2027-12-06", trade: "Permitting", cost: 3_500, crew: 2 }],
   },
 ];
 
@@ -326,12 +333,130 @@ export const RESIDENCE: Project = {
   health: residenceHealth,
   comments: residenceComments,
   startDate: "2027-01-11",
+  // approximate spot for the sample address; a 50 × 100 ft lot around the house (set the real one in the Site palette)
+  site: { lat: 25.7593, lon: -80.2378, north: 0, source: "sample", boundary: [[-13, -36], [37, -36], [37, 64], [-13, 64]] },
   versions: [
     { id: "v1.4", label: "v1.4 — current", at: "Today, 10:42", by: "You" },
     { id: "v1.3", label: "v1.3 — added stair and L2 partitions", at: "Yesterday, 16:05", by: "M. Chen" },
     { id: "v1.2", label: "v1.2 — foundation revised for soil report", at: "3 days ago", by: "R. Okafor" },
     { id: "v1.1", label: "v1.1 — first compliance pass", at: "1 week ago", by: "You" },
     { id: "v1.0", label: "v1.0 — imported concept plan", at: "2 weeks ago", by: "You" },
+  ],
+};
+
+/* ── Cottage_2BR_1BA (one storey, two bedrooms, one bath, septic) ─────── */
+const COTTAGE_LEVELS: Level[] = [
+  { id: "roof", name: "Roof", elevation: 9, label: "+9.0" },
+  { id: "level1", name: "Level 1", elevation: 0, label: "±0.0" },
+  { id: "foundation", name: "Foundation", elevation: -2.5, label: "−2.5" },
+  { id: "site", name: "Site", elevation: -4, label: "−4.0" },
+];
+
+const cottageChecks: CodeCheck[] = [
+  { id: "CK-01", group: "Structural", rule: "Wind design pressures (components & cladding)", section: "FBC-R §R301.2.1", status: "pass", elements: ["W-L1-S", "W-L1-N", "W-L1-W", "W-L1-E"] },
+  { id: "CK-02", group: "Structural", rule: "Footing size for the soil bearing (24\" × 12\" continuous)", section: "FBC-R §R403.1", status: "pass", elements: ["F-FT-S", "F-FT-N", "F-FT-W", "F-FT-E"] },
+  { id: "CK-03", group: "Structural", rule: "Roof-to-wall uplift connectors", section: "FBC-R §R802.11", status: "review", elements: ["R-01", "R-02", "B-L1-W", "B-L1-E"], peReview: true, fix: "Specify a connector rated ≥ 600 lb uplift at every truss and attach the product approval." },
+  { id: "CK-04", group: "Structural", rule: "Porch post footings and uplift anchors", section: "FBC-R §R407.3", status: "pass", elements: ["F-PIER-1", "F-PIER-2", "PO-P1", "PO-P2"] },
+  { id: "CK-05", group: "Structural", rule: "Thickened slab under bearing walls", section: "FBC-R §R506.2", status: "pass", elements: ["F-TS-1", "F-TS-2"] },
+  { id: "CK-06", group: "Egress & Accessibility", rule: "Emergency escape opening in each bedroom", section: "FBC-R §R310.1", status: "pass", elements: ["WN-103", "WN-104", "WN-107", "WN-110"] },
+  { id: "CK-07", group: "Egress & Accessibility", rule: "Egress door clear width ≥ 32\"", section: "FBC-R §R311.2", status: "pass", elements: ["D-101", "D-102"] },
+  { id: "CK-08", group: "Energy", rule: "Ceiling insulation R-38", section: "FBC-EC §R402.1.2", status: "pass", elements: ["R-01", "R-02"] },
+  { id: "CK-09", group: "Energy", rule: "Window SHGC ≤ 0.25 (Zone 2)", section: "FBC-EC §R402.1.2", status: "review", elements: ["WN-101", "WN-102"], fix: "The front windows list SHGC 0.30. Choose a low-e glass with SHGC ≤ 0.25." },
+  { id: "CK-10", group: "Fire", rule: "Smoke alarms in each bedroom and the hall", section: "FBC-R §R314.3", status: "pass", elements: [] },
+  { id: "CK-11", group: "Structural", rule: "Septic tank ≥ 5 ft from the building", section: "FAC 64E-6.005", status: "pass", elements: ["SEP-TANK"] },
+  { id: "CK-12", group: "Structural", rule: "Drain field ≥ 75 ft from a private well", section: "FAC 64E-6.005", status: "review", elements: ["SEP-FIELD"], fix: "No well is on the site plan yet. Locate the well (or confirm city water) and keep it 75 ft from the drain field." },
+  { id: "CK-13", group: "Structural", rule: "Septic tank capacity for 2 bedrooms ≥ 900 gal", section: "FAC 64E-6.008", status: "pass", elements: ["SEP-TANK"] },
+];
+
+/** The sample one-storey house: two bedrooms, one bath, a full foundation and a septic system. */
+export const COTTAGE: Project = {
+  id: COTTAGE_PROJECT_ID,
+  name: "Cottage_2BR_1BA",
+  fileName: "Cottage_2BR.bsd",
+  jurisdiction: { name: "Orange County, FL", codeSet: "FBC 8th Ed." },
+  address: "2207 Lake Pickett Rd, Orlando, FL 32820",
+  client: "J. & R. Moreno",
+  architect: "Studio Marais Architects",
+  engineer: "R. Okafor, PE",
+  sceneKind: "cottage",
+  levels: COTTAGE_LEVELS,
+  layers: makeLayers(),
+  issues: [
+    { id: "IS-301", severity: "high", title: "Roof-to-wall connector schedule missing", location: "Roof · eaves", elementId: "R-01", assignee: "R. Okafor", status: "in-progress", due: "2027-02-05" },
+    { id: "IS-302", severity: "medium", title: "Front window SHGC above the Zone 2 limit", location: "Level 1 · South façade", elementId: "WN-101", assignee: "D. Patel", status: "open", due: "2027-02-10" },
+    { id: "IS-303", severity: "medium", title: "Locate the private well 75 ft from the drain field", location: "Site · back yard", elementId: "SEP-FIELD", assignee: "You", status: "open", due: "2027-02-12" },
+    { id: "IS-304", severity: "low", title: "Porch post base detail", location: "Front porch", elementId: "PO-P1", assignee: "M. Chen", status: "resolved", due: "2027-01-20", resolution: "Detail 3/S-201 added." },
+  ],
+  clashes: [{ id: "CL-01", kind: "SOFT", a: "Water heater FX-WH", b: "Laundry door D-105 swing", level: "Level 1", fix: "Move the water heater 6\" east or reverse the door swing.", elementIds: ["FX-WH", "D-105"] }],
+  checks: cottageChecks,
+  cost: {
+    total: 318_400,
+    range: 22_300,
+    hard: 214_900,
+    soft: 30_500,
+    land: 73_000,
+    basis: "Class 4 estimate · Central Florida unit rates 2026 · includes the septic system",
+    materials: [
+      { name: "Concrete & CMU", cost: 62_400 },
+      { name: "Roofing & Framing", cost: 34_800 },
+      { name: "Windows & Doors", cost: 26_900 },
+      { name: "MEP Systems", cost: 38_600 },
+      { name: "Septic System", cost: 11_800 },
+      { name: "Finishes & Fixtures", cost: 40_400 },
+    ],
+    workforce: [
+      { trade: "Masons", headcount: 5, months: 1.5 },
+      { trade: "Concrete Crew", headcount: 5, months: 1 },
+      { trade: "Carpenters", headcount: 4, months: 1.5 },
+      { trade: "Septic Contractor", headcount: 3, months: 0.5 },
+      { trade: "Electricians", headcount: 2, months: 1 },
+      { trade: "Plumbers", headcount: 2, months: 1 },
+      { trade: "Finishers", headcount: 4, months: 2 },
+    ],
+  },
+  schedule: [
+    { name: "Site Prep & Septic", key: "site", start: "2027-03-01", end: "2027-03-26", tasks: [{ name: "Clearing & Stake-Out", start: "2027-03-01", end: "2027-03-05", trade: "Survey", cost: 4_200, crew: 3 }, { name: "Septic Tank & Drain Field", start: "2027-03-08", end: "2027-03-26", trade: "Septic Contractor", cost: 11_800, crew: 3, materials: [{ name: "Septic Tank 1,000 gal", qty: 1, unit: "ea" }, { name: "Washed Gravel", qty: 38, unit: "cy" }] }] },
+    { name: "Foundation", key: "foundation", start: "2027-03-15", end: "2027-04-09", tasks: [{ name: "Footings, Stem Walls & Piers", start: "2027-03-15", end: "2027-03-31", trade: "Concrete", cost: 21_500, crew: 5, materials: [{ name: "Concrete 3000 psi", qty: 24, unit: "cy" }, { name: "Rebar #5", qty: 1.2, unit: "ton" }] }, { name: "Slab on Grade", start: "2027-04-01", end: "2027-04-09", trade: "Concrete", cost: 12_400, crew: 5, materials: [{ name: "Concrete 3000 psi", qty: 14, unit: "cy" }] }] },
+    { name: "Walls", key: "structure1", start: "2027-04-12", end: "2027-05-14", tasks: [{ name: "CMU Walls & Tie Columns", start: "2027-04-12", end: "2027-05-07", trade: "Masonry", cost: 38_000, crew: 5 }, { name: "Bond Beam", start: "2027-05-05", end: "2027-05-14", trade: "Concrete", cost: 9_800, crew: 4 }] },
+    { name: "Roof", key: "roof", start: "2027-05-17", end: "2027-06-11", tasks: [{ name: "Trusses & Sheathing", start: "2027-05-17", end: "2027-05-31", trade: "Carpentry", cost: 18_600, crew: 4 }, { name: "Shingles & Porch Roof", start: "2027-06-01", end: "2027-06-11", trade: "Roofing", cost: 12_200, crew: 3 }] },
+    { name: "Envelope & MEP", key: "mep", start: "2027-06-07", end: "2027-07-23", tasks: [{ name: "Windows & Doors", start: "2027-06-07", end: "2027-06-18", trade: "Glazing", cost: 26_900, crew: 3 }, { name: "MEP Rough-In", start: "2027-06-21", end: "2027-07-23", trade: "MEP", cost: 38_600, crew: 4 }] },
+    { name: "Finishes", key: "finishes", start: "2027-07-26", end: "2027-09-17", tasks: [{ name: "Drywall, Paint, Floors & Cabinets", start: "2027-07-26", end: "2027-09-17", trade: "Finishers", cost: 40_400, crew: 5 }] },
+    { name: "Inspections & CO", start: "2027-09-20", end: "2027-10-01", tasks: [{ name: "Final Inspections & Septic Approval", start: "2027-09-20", end: "2027-10-01", trade: "Permitting", cost: 2_100, crew: 2 }] },
+  ],
+  stages: [
+    { name: "Concept", status: "done", percent: 100, openTasks: 0, openIssues: 0, approvals: 0 },
+    { name: "Design", status: "done", percent: 100, openTasks: 0, openIssues: 0, approvals: 0 },
+    { name: "Engineering", status: "active", percent: 70, openTasks: 3, openIssues: 2, approvals: 1 },
+    { name: "Analysis", status: "active", percent: 40, openTasks: 2, openIssues: 1, approvals: 0 },
+    { name: "Documentation", status: "upcoming", percent: 10, openTasks: 5, openIssues: 0, approvals: 1 },
+    { name: "Approval", status: "upcoming", percent: 0, openTasks: 2, openIssues: 0, approvals: 2 },
+    { name: "Construction", status: "upcoming", percent: 0, openTasks: 9, openIssues: 0, approvals: 0 },
+  ],
+  health: {
+    score: 87,
+    delta: 3,
+    compliance: 86,
+    structural: 84,
+    cost: 92,
+    schedule: 88,
+    summary: "A simple one-storey plan on a full foundation. Cost (92) is strongest; the roof-to-wall connectors still need PE review and the well location must be confirmed against the drain field.",
+    ranges: {
+      all: { score: 87, delta: 3, compliance: 86, structural: 84, cost: 92, schedule: 88 },
+      "30d": { score: 87, delta: 5, compliance: 86, structural: 84, cost: 92, schedule: 88 },
+      version: { score: 87, delta: 3, compliance: 86, structural: 84, cost: 92, schedule: 88 },
+    },
+  },
+  comments: [
+    { id: "CM-1", author: "R. Okafor", text: "Thickened slab under both hall walls: they carry the ceiling joists at mid-span.", at: "Today", resolved: false, elementId: "F-TS-1", replies: [], attachments: [], history: ["Created by R. Okafor"] },
+    { id: "CM-2", author: "You", text: "Septic permit application sent with the 12 min/in perc test.", at: "Yesterday", resolved: false, elementId: "SEP-TANK", replies: [], attachments: ["perc-test.pdf"], history: ["Created by You"] },
+  ],
+  startDate: "2027-03-01",
+  // approximate spot for the sample address; a 60 × 110 ft lot with the septic field in the back yard
+  site: { lat: 28.5653, lon: -81.176, north: 0, source: "sample", boundary: [[-16, -30], [44, -30], [44, 80], [-16, 80]] },
+  versions: [
+    { id: "v0.3", label: "v0.3 — current", at: "Today, 08:40", by: "You" },
+    { id: "v0.2", label: "v0.2 — septic system and porch added", at: "2 days ago", by: "M. Chen" },
+    { id: "v0.1", label: "v0.1 — concept plan", at: "1 week ago", by: "You" },
   ],
 };
 
@@ -385,26 +510,26 @@ export const CLINIC: Project = {
     basis: "Class 4 estimate · Regional unit rates 2026 · Antigua import factor 1.32",
     materials: [
       { name: "Concrete & CMU", cost: 286_000 },
-      { name: "Roofing & waterproofing", cost: 118_000 },
-      { name: "Windows & doors", cost: 96_500 },
-      { name: "MEP systems", cost: 214_000 },
-      { name: "Medical fit-out", cost: 168_000 },
+      { name: "Roofing & Waterproofing", cost: 118_000 },
+      { name: "Windows & Doors", cost: 96_500 },
+      { name: "MEP Systems", cost: 214_000 },
+      { name: "Medical Fit-Out", cost: 168_000 },
     ],
     workforce: [
       { trade: "Masons", headcount: 8, months: 3 },
-      { trade: "Concrete crew", headcount: 6, months: 2.5 },
+      { trade: "Concrete Crew", headcount: 6, months: 2.5 },
       { trade: "Electricians", headcount: 4, months: 2 },
       { trade: "Plumbers", headcount: 4, months: 2 },
       { trade: "Finishers", headcount: 7, months: 3 },
     ],
   },
   schedule: [
-    { name: "Site prep", key: "site", start: "2027-03-01", end: "2027-03-29", tasks: [{ name: "Clearing & grading", start: "2027-03-01", end: "2027-03-26", trade: "Earthwork", cost: 38_000, crew: 6 }] },
-    { name: "Foundation", key: "foundation", start: "2027-03-29", end: "2027-04-30", tasks: [{ name: "Footings & stem walls", start: "2027-03-29", end: "2027-04-23", trade: "Concrete", cost: 96_000, crew: 8 }, { name: "Slab on grade", start: "2027-04-19", end: "2027-04-30", trade: "Concrete", cost: 44_000, crew: 7 }] },
-    { name: "Structure", key: "structure1", start: "2027-04-30", end: "2027-06-25", tasks: [{ name: "CMU walls & columns", start: "2027-04-30", end: "2027-06-11", trade: "Masonry", cost: 168_000, crew: 9 }, { name: "Bond beam", start: "2027-06-07", end: "2027-06-25", trade: "Concrete", cost: 38_000, crew: 6 }] },
-    { name: "Roof", key: "roof", start: "2027-06-25", end: "2027-07-30", tasks: [{ name: "Roof slab & membrane", start: "2027-06-25", end: "2027-07-30", trade: "Concrete", cost: 122_000, crew: 8 }] },
-    { name: "Envelope & MEP", key: "mep", start: "2027-07-12", end: "2027-09-24", tasks: [{ name: "Windows & doors", start: "2027-07-12", end: "2027-08-06", trade: "Glazing", cost: 96_500, crew: 5 }, { name: "MEP rough-in", start: "2027-08-02", end: "2027-09-24", trade: "MEP", cost: 214_000, crew: 9 }] },
-    { name: "Finishes", key: "finishes", start: "2027-09-24", end: "2027-11-26", tasks: [{ name: "Finishes & medical fit-out", start: "2027-09-24", end: "2027-11-26", trade: "Finishers", cost: 146_000, crew: 10 }] },
+    { name: "Site Prep", key: "site", start: "2027-03-01", end: "2027-03-29", tasks: [{ name: "Clearing & Grading", start: "2027-03-01", end: "2027-03-26", trade: "Earthwork", cost: 38_000, crew: 6 }] },
+    { name: "Foundation", key: "foundation", start: "2027-03-29", end: "2027-04-30", tasks: [{ name: "Footings & Stem Walls", start: "2027-03-29", end: "2027-04-23", trade: "Concrete", cost: 96_000, crew: 8 }, { name: "Slab on Grade", start: "2027-04-19", end: "2027-04-30", trade: "Concrete", cost: 44_000, crew: 7 }] },
+    { name: "Structure", key: "structure1", start: "2027-04-30", end: "2027-06-25", tasks: [{ name: "CMU Walls & Columns", start: "2027-04-30", end: "2027-06-11", trade: "Masonry", cost: 168_000, crew: 9 }, { name: "Bond Beam", start: "2027-06-07", end: "2027-06-25", trade: "Concrete", cost: 38_000, crew: 6 }] },
+    { name: "Roof", key: "roof", start: "2027-06-25", end: "2027-07-30", tasks: [{ name: "Roof Slab & Membrane", start: "2027-06-25", end: "2027-07-30", trade: "Concrete", cost: 122_000, crew: 8 }] },
+    { name: "Envelope & MEP", key: "mep", start: "2027-07-12", end: "2027-09-24", tasks: [{ name: "Windows & Doors", start: "2027-07-12", end: "2027-08-06", trade: "Glazing", cost: 96_500, crew: 5 }, { name: "MEP Rough-In", start: "2027-08-02", end: "2027-09-24", trade: "MEP", cost: 214_000, crew: 9 }] },
+    { name: "Finishes", key: "finishes", start: "2027-09-24", end: "2027-11-26", tasks: [{ name: "Finishes & Medical Fit-Out", start: "2027-09-24", end: "2027-11-26", trade: "Finishers", cost: 146_000, crew: 10 }] },
   ],
   stages: [
     { name: "Concept", status: "done", percent: 100, openTasks: 0, openIssues: 0, approvals: 0 },
@@ -442,13 +567,15 @@ export const CLINIC: Project = {
     },
   ],
   startDate: "2027-03-01",
+  // approximate spot on Fort Road; an irregular lot with the parking apron at the front
+  site: { lat: 17.1325, lon: -61.8462, north: 0, source: "sample", boundary: [[-20, -36], [70, -36], [74, 58], [-20, 52]] },
   versions: [
     { id: "v0.6", label: "v0.6 — current", at: "Today, 09:10", by: "You" },
     { id: "v0.5", label: "v0.5 — added canopy and ramp", at: "2 days ago", by: "T. Williams" },
   ],
 };
 
-/** Starter project used for "New project" tabs. */
+/** Starter project used for "New Project" tabs. */
 export function blankProject(id: string, n: number): Project {
   return {
     id,
@@ -499,6 +626,7 @@ export function blankProject(id: string, n: number): Project {
 /** Projects shown as recent on the Start page and in the application menu. */
 export const RECENT_PROJECTS: RecentProject[] = [
   { id: RESIDENCE.id, name: RESIDENCE.name, jurisdiction: RESIDENCE.jurisdiction.name, openedAt: "Today" },
+  { id: COTTAGE.id, name: COTTAGE.name, jurisdiction: COTTAGE.jurisdiction.name, openedAt: "Today" },
   { id: CLINIC.id, name: CLINIC.name, jurisdiction: CLINIC.jurisdiction.name, openedAt: "Yesterday" },
   { id: "school-annex-nassau", name: "School_Annex_Nassau", jurisdiction: "Nassau, Bahamas", openedAt: "Oct 12" },
   { id: "duplex-orlando", name: "Duplex_Orlando", jurisdiction: "Orange County, FL", openedAt: "Oct 3" },
@@ -507,10 +635,10 @@ export const RECENT_PROJECTS: RecentProject[] = [
 
 /** Project templates shown on the Start page. */
 export const TEMPLATES = [
-  { id: "tpl-res", name: "Single-family residence", desc: "2 levels · gable roof · CMU" },
-  { id: "tpl-clinic", name: "Light commercial / clinic", desc: "1 level · flat roof · accessible entry" },
-  { id: "tpl-site", name: "Site plan only", desc: "Terrain, setbacks and utilities" },
-  { id: "tpl-blank", name: "Blank project", desc: "Empty model with Miami-Dade code set" },
+  { id: "tpl-res", name: "Single-Family Residence", desc: "2 levels · gable roof · CMU" },
+  { id: "tpl-clinic", name: "Light Commercial / Clinic", desc: "1 level · flat roof · accessible entry" },
+  { id: "tpl-site", name: "Site Plan Only", desc: "Terrain, setbacks and utilities" },
+  { id: "tpl-blank", name: "Blank Project", desc: "Empty model with Miami-Dade code set" },
 ];
 
 /** Jurisdictions and code sets that can be chosen. */

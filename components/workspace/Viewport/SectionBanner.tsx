@@ -30,20 +30,20 @@ export function SectionBanner() {
       </span>
       <input
         type="range"
-        aria-label="Section plane position (Y, feet)"
+        aria-label="Section Plane Position (Y, Feet)"
         min={f.y0 + 1}
         max={f.y1 - 1}
         step={0.5}
         value={y}
         onChange={(e) => ws.getState().setSectionY(Number(e.target.value))}
         className="h-1 w-24 cursor-pointer accent-[var(--accent)]"
-        {...tip("Section plane", "Drag to move the cutting plane along Y", "SECTIONPLANE")}
+        {...tip("Section Plane", "Drag to move the cutting plane along Y", "SECTIONPLANE")}
       />
       <button
         onClick={() => ws.getState().setSection(false)}
-        aria-label="Turn off section cut"
+        aria-label="Turn Off Section Cut"
         className="grid size-5 place-items-center rounded-full text-t2 hover:bg-t1/10 hover:text-t1"
-        {...tip("Turn off section", "Return to the full model", "SECTIONPLANE")}
+        {...tip("Turn Off Section", "Return to the full model", "SECTIONPLANE")}
       >
         <Icon name="close" size={12} />
       </button>

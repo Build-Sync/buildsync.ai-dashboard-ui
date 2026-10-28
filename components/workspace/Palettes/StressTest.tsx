@@ -3,7 +3,7 @@
  *
  * WHAT   The Stress Test palette: set up an element, load case, conditions and mesh, then Run or Clear. Results
  *        show max stress against the allowable, strain, deflection against its limit, safety factor, max load
- *        and a pass / fail verdict, with "Apply in model" to act on the result.
+ *        and a pass / fail verdict, with "Apply in Model" to act on the result.
  * FOR    Structural checks of load-bearing elements from the open scene (the Element list is built from them).
  *        Calculations come from lib/services/analysis.ts (mock); results are advisory until a PE signs off.
  * DEBUG  - An element is missing from the list: only load-bearing elements, plus one truss, are offered;
@@ -46,10 +46,10 @@ export function StressTest() {
       <div className="space-y-2.5 border-b border-soft p-3">
         <div className="label-xs">Setup</div>
         <Row label="Element">
-          <Select<string> label="Element" className="w-full" value={setup.elementId} onChange={(v) => ws.getState().setStressSetup({ elementId: v })} options={[{ value: "all", label: "Whole structure" }, ...elements.map((e) => ({ value: e.id, label: `${renames[e.id] ?? e.name} · ${e.id}` }))]} />
+          <Select<string> label="Element" className="w-full" value={setup.elementId} onChange={(v) => ws.getState().setStressSetup({ elementId: v })} options={[{ value: "all", label: "Whole Structure" }, ...elements.map((e) => ({ value: e.id, label: `${renames[e.id] ?? e.name} · ${e.id}` }))]} />
         </Row>
-        <Row label="Load case">
-          <Select<LoadCaseId> label="Load case" className="w-full" value={setup.loadCase} onChange={(v) => ws.getState().setStressSetup({ loadCase: v })} options={LOAD_CASES.map((l) => ({ value: l.id, label: l.label }))} />
+        <Row label="Load Case">
+          <Select<LoadCaseId> label="Load Case" className="w-full" value={setup.loadCase} onChange={(v) => ws.getState().setStressSetup({ loadCase: v })} options={LOAD_CASES.map((l) => ({ value: l.id, label: l.label }))} />
         </Row>
         <Row label="Conditions">
           <Select<ConditionId> label="Conditions" className="w-full" value={setup.condition} onChange={(v) => ws.getState().setStressSetup({ condition: v })} options={CONDITIONS.map((l) => ({ value: l.id, label: l.label }))} />
@@ -72,21 +72,21 @@ export function StressTest() {
           <div className="mb-2 flex items-center justify-between">
             <div className="label-xs">Results</div>
             <button className="flex items-center gap-1 text-[0.6875rem] text-t2 hover:text-t1" onClick={() => ws.getState().patch({ stressOverlay: !overlay })} aria-pressed={overlay}>
-              <Icon name={overlay ? "showall" : "hide"} size={12} /> Heat overlay
+              <Icon name={overlay ? "showall" : "hide"} size={12} /> Heat Overlay
             </button>
           </div>
           <dl className="grid grid-cols-2 gap-1.5">
-            <Stat label="Max stress" value={`${result.maxStress.toFixed(2)} ksi`} tone={result.maxStress > result.allowable ? "bad" : "ok"} sub={`allow ${result.allowable.toFixed(1)}`} />
+            <Stat label="Max Stress" value={`${result.maxStress.toFixed(2)} ksi`} tone={result.maxStress > result.allowable ? "bad" : "ok"} sub={`allow ${result.allowable.toFixed(1)}`} />
             <Stat label="Strain" value={`${result.strain.toFixed(3)} %`} />
             <Stat label="Deflection" value={`${result.deflection.toFixed(2)} in`} tone={result.deflection > result.limit ? "bad" : "ok"} sub={`limit ${result.limit.toFixed(2)} in`} />
-            <Stat label="Safety factor" value={result.safetyFactor.toFixed(2)} tone={result.safetyFactor < 1 ? "bad" : result.safetyFactor < 1.25 ? "warn" : "ok"} />
-            <Stat label="Max load" value={`${result.maxLoad.toFixed(1)} kip`} />
+            <Stat label="Safety Factor" value={result.safetyFactor.toFixed(2)} tone={result.safetyFactor < 1 ? "bad" : result.safetyFactor < 1.25 ? "warn" : "ok"} />
+            <Stat label="Max Load" value={`${result.maxLoad.toFixed(1)} kip`} />
             <Stat label="Result" value={failing ? "Fails" : "Passes"} tone={failing ? "bad" : "ok"} />
           </dl>
 
           {result.failurePoints.length > 0 && (
             <div className="mt-3">
-              <h4 className="label-xs mb-1">Failure points</h4>
+              <h4 className="label-xs mb-1">Failure Points</h4>
               <ul className="space-y-1">
                 {result.failurePoints.map((f) => (
                   <li key={f.id} className="flex items-center gap-2 rounded border border-bad/30 bg-bad/10 px-2 py-1 text-[0.75rem]">
@@ -99,7 +99,7 @@ export function StressTest() {
             </div>
           )}
           <div className="mt-3">
-            <h4 className="label-xs mb-1">Critical areas</h4>
+            <h4 className="label-xs mb-1">Critical Areas</h4>
             <ul className="space-y-0.5 text-[0.75rem] text-t2">
               {result.criticalAreas.map((a) => (
                 <li key={a} className="flex gap-1.5">
@@ -118,13 +118,13 @@ export function StressTest() {
             <p className="mt-1 text-[0.75rem] leading-snug text-t1">{result.recommendation}</p>
             {result.fixable && (
               <button className="btn btn-primary mt-2 h-7 w-full" onClick={() => ws.getState().applyStressFix()} data-testid="apply-fix">
-                Apply in model <Icon name="arrowRight" size={13} />
+                Apply in Model <Icon name="arrowRight" size={13} />
               </button>
             )}
           </div>
 
           <button className="mt-3 flex items-center gap-1 text-[0.75rem] text-accent hover:underline" aria-expanded={calc} onClick={() => setCalc(!calc)}>
-            <Icon name={calc ? "chevDown" : "chevRight"} size={12} /> {calc ? "Hide calculations" : "Show calculations"}
+            <Icon name={calc ? "chevDown" : "chevRight"} size={12} /> {calc ? "Hide Calculations" : "Show Calculations"}
           </button>
           {calc && (
             <pre className="anim-fade mono mt-1.5 overflow-x-auto whitespace-pre-wrap rounded-md border border-line bg-app p-2 text-[0.6875rem] leading-relaxed text-t2">{result.calc.join("\n")}</pre>

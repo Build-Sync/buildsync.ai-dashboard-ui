@@ -4,9 +4,9 @@
  * WHAT   React provider and hooks for the global store: AppStoreProvider creates the store, restores the saved
  *        settings after mount (so the first browser render matches the server), writes the bs_start cookie for
  *        /app, and applies theme, accent and UI scale to <html> (ThemeApplier, which also updates the theme-
- *        color meta tag and follows the OS in "Match system" mode).
+ *        color meta tag and follows the OS in "Match System" mode).
  * FOR    Mounted once in app/layout.tsx. Components use useApp(selector), useAppShallow and useAppApi().
- * OS     "Match system" follows macOS Appearance, the Windows app mode, or the desktop's dark mode and
+ * OS     "Match System" follows macOS Appearance, the Windows app mode, or the desktop's dark mode and
  *        increase-contrast setting, live, through useResolvedTheme (lib/use-theme.ts).
  * DEBUG  - Flash of the wrong theme: public/theme-boot.js sets data-theme before first paint; ThemeApplier
  *          leaves <html> alone until `hydrated`.
@@ -63,7 +63,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 function ThemeApplier({ store }: { store: AppStore }) {
   const display = useStore(store, (s) => selectEffective(s).display);
   const hydrated = useStore(store, (s) => s.hydrated);
-  // "Match system" follows the OS live (macOS Appearance, Windows app mode, high-contrast switch)
+  // "Match System" follows the OS live (macOS Appearance, Windows app mode, high-contrast switch)
   const theme = useResolvedTheme(display.theme);
   // layout effect: panels that measure text (the ribbon) run in the same commit and must see the new look
   useLayoutEffect(() => {

@@ -28,26 +28,26 @@ export const LOAD_CASES = [
   { id: "dead-live", label: "Dead + Live (1.2D + 1.6L)" },
   { id: "wind", label: "Wind (ASCE 7 · 175 mph)" },
   { id: "seismic", label: "Seismic (Site Class D)" },
-  { id: "combined", label: "Combined (wind + live)" },
+  { id: "combined", label: "Combined (Wind + Live)" },
 ] as const;
 /** Id of a stress-test load case. */
 export type LoadCaseId = (typeof LOAD_CASES)[number]["id"];
 
 /** Environmental conditions for a stress test. */
 export const CONDITIONS = [
-  { id: "normal", label: "Normal service" },
-  { id: "hurricane", label: "Hurricane exposure C" },
-  { id: "flood", label: "Flood — 3 ft stillwater" },
-  { id: "fire", label: "Fire exposure — 1 h" },
+  { id: "normal", label: "Normal Service" },
+  { id: "hurricane", label: "Hurricane Exposure C" },
+  { id: "flood", label: "Flood — 3 ft Stillwater" },
+  { id: "fire", label: "Fire Exposure — 1 h" },
 ] as const;
 /** Id of a stress-test condition. */
 export type ConditionId = (typeof CONDITIONS)[number]["id"];
 
 /** Mesh densities for a stress test. */
 export const MESHES = [
-  { id: "coarse", label: "Coarse (fast)" },
+  { id: "coarse", label: "Coarse (Fast)" },
   { id: "medium", label: "Medium" },
-  { id: "fine", label: "Fine (slow)" },
+  { id: "fine", label: "Fine (Slow)" },
 ] as const;
 /** Id of a mesh density. */
 export type MeshId = (typeof MESHES)[number]["id"];
@@ -155,10 +155,10 @@ export async function runStressTest(project: Project, setup: StressSetup): Promi
 
 /* ── disaster simulation ──────────────────────────────────────────────── */
 export const SIM_TYPES = [
-  { id: "hurricane", label: "Hurricane wind", unit: "mph", min: 80, max: 250, step: 5, def: 200 },
+  { id: "hurricane", label: "Hurricane Wind", unit: "mph", min: 80, max: 250, step: 5, def: 200 },
   { id: "seismic", label: "Seismic", unit: "g PGA", min: 0.05, max: 1, step: 0.05, def: 0.3 },
-  { id: "flood", label: "Flood / storm surge", unit: "ft", min: 1, max: 15, step: 0.5, def: 4 },
-  { id: "fire", label: "Fire spread", unit: "MW", min: 0.5, max: 20, step: 0.5, def: 5 },
+  { id: "flood", label: "Flood / Storm Surge", unit: "ft", min: 1, max: 15, step: 0.5, def: 4 },
+  { id: "fire", label: "Fire Spread", unit: "MW", min: 0.5, max: 20, step: 0.5, def: 5 },
   { id: "thermal", label: "Thermal", unit: "°F Δ", min: 10, max: 60, step: 1, def: 35 },
   { id: "energy", label: "Energy", unit: "kBtu/sf·yr", min: 15, max: 90, step: 1, def: 42 },
   { id: "lighting", label: "Lighting", unit: "lux", min: 50, max: 1000, step: 10, def: 300 },
@@ -222,9 +222,9 @@ export async function runSimulation(setup: SimSetup): Promise<SimResult> {
     const risk = Math.round(clamp(((dc - 0.75) / 0.6) * 100 + durationBump, 2, 98));
     const fails: SimResult["failurePoints"] = [];
     if (dc > 0.85) fails.push({ label: `${from} eave clip row`, detail: `Uplift ${uplift.toFixed(0)} psf vs ${capacity} psf clip capacity (R-01)` });
-    if (dc > 1.0) fails.push({ label: "Windward windows", detail: "Debris-impact zone: WN-104, WN-105, WN-204, WN-205" });
-    if (dc > 1.1) fails.push({ label: "Ridge cap and gable overhang", detail: "Edge zone 3 suction exceeds fastener pull-out" });
-    if (dc > 1.3) fails.push({ label: "Sliding patio door D-102", detail: "Design pressure exceeds the product approval rating" });
+    if (dc > 1.0) fails.push({ label: "Windward Windows", detail: "Debris-impact zone: WN-104, WN-105, WN-204, WN-205" });
+    if (dc > 1.1) fails.push({ label: "Ridge Cap and Gable Overhang", detail: "Edge zone 3 suction exceeds fastener pull-out" });
+    if (dc > 1.3) fails.push({ label: "Sliding Patio Door D-102", detail: "Design pressure exceeds the product approval rating" });
     return {
       setup,
       headline: `${V} mph from the ${from}: ${dc > 1 ? "roof uplift exceeds clip capacity" : "within design capacity"}`,
@@ -232,10 +232,10 @@ export async function runSimulation(setup: SimSetup): Promise<SimResult> {
       capacity,
       breachRisk: risk,
       metrics: [
-        { label: "Velocity pressure q", value: `${q.toFixed(1)} psf`, tone: "ok" },
-        { label: "Roof uplift (edge zone)", value: `${uplift.toFixed(0)} psf`, tone: dc > 1 ? "bad" : dc > 0.85 ? "warn" : "ok" },
-        { label: "Clip capacity", value: `${capacity} psf`, tone: "ok" },
-        { label: "Breach risk", value: `${risk}%`, tone: toneOf(risk) },
+        { label: "Velocity Pressure q", value: `${q.toFixed(1)} psf`, tone: "ok" },
+        { label: "Roof Uplift (Edge Zone)", value: `${uplift.toFixed(0)} psf`, tone: dc > 1 ? "bad" : dc > 0.85 ? "warn" : "ok" },
+        { label: "Clip Capacity", value: `${capacity} psf`, tone: "ok" },
+        { label: "Breach Risk", value: `${risk}%`, tone: toneOf(risk) },
       ],
       failurePoints: fails,
       calc: [
@@ -264,32 +264,32 @@ export async function runSimulation(setup: SimSetup): Promise<SimResult> {
       const drift = 0.6 + i * 2.4;
       risk = Math.round(clamp((drift - 1.4) * 45, 2, 95));
       headline = `${i.toFixed(2)} g: ${drift > 2 ? "drift exceeds 2%" : "drift acceptable"}`;
-      metrics.push({ label: "Base shear V", value: `${V.toFixed(0)} kip`, tone: "ok" }, { label: "Story drift", value: `${drift.toFixed(2)}%`, tone: drift > 2 ? "bad" : drift > 1.5 ? "warn" : "ok" }, { label: "Failure risk", value: `${risk}%`, tone: toneOf(risk) });
+      metrics.push({ label: "Base Shear V", value: `${V.toFixed(0)} kip`, tone: "ok" }, { label: "Story Drift", value: `${drift.toFixed(2)}%`, tone: drift > 2 ? "bad" : drift > 1.5 ? "warn" : "ok" }, { label: "Failure Risk", value: `${risk}%`, tone: toneOf(risk) });
       calc.push("V = C_s · W", `V = ${Cs.toFixed(2)} × ${W} kip = ${V.toFixed(0)} kip`, `Story drift Δ/h = ${drift.toFixed(2)}% (limit 2.0%)`);
-      if (drift > 1.8) fails.push({ label: "Level 1 CMU walls, west", detail: "Shear cracking at openings WN-104/WN-105" });
+      if (drift > 1.8) fails.push({ label: "Level 1 CMU Walls, West", detail: "Shear cracking at openings WN-104/WN-105" });
       break;
     }
     case "flood": {
       const press = 62.4 * i;
       risk = Math.round(clamp((i - 1.5) * 12 + t, 2, 95));
       headline = `${i} ft stillwater: ${i > 1 ? "Level 1 floods" : "no floor impact"}`;
-      metrics.push({ label: "Hydrostatic pressure", value: `${press.toFixed(0)} psf`, tone: press > 250 ? "bad" : "warn" }, { label: "Floor above surge", value: `${(1 - i).toFixed(1)} ft`, tone: i > 1 ? "bad" : "ok" }, { label: "Damage risk", value: `${risk}%`, tone: toneOf(risk) });
+      metrics.push({ label: "Hydrostatic Pressure", value: `${press.toFixed(0)} psf`, tone: press > 250 ? "bad" : "warn" }, { label: "Floor Above Surge", value: `${(1 - i).toFixed(1)} ft`, tone: i > 1 ? "bad" : "ok" }, { label: "Damage Risk", value: `${risk}%`, tone: toneOf(risk) });
       calc.push("p = γ · h", `p = 62.4 pcf × ${i} ft = ${press.toFixed(0)} psf`);
-      if (i > 1) fails.push({ label: "Level 1 slab and finishes", detail: "Inundated; electrical panel MDP below flood line" });
+      if (i > 1) fails.push({ label: "Level 1 Slab and Finishes", detail: "Inundated; electrical panel MDP below flood line" });
       break;
     }
     case "fire": {
       risk = Math.round(clamp(i * 4 + t, 2, 95));
       headline = `${i} MW fire: spread ${Math.round(60 / Math.max(i, 1))} min between rooms`;
-      metrics.push({ label: "Heat release", value: `${i} MW`, tone: "warn" }, { label: "Room-to-room spread", value: `${Math.round(60 / Math.max(i, 1))} min`, tone: i > 8 ? "bad" : "ok" }, { label: "Egress time margin", value: `${Math.max(2, 14 - Math.round(i))} min`, tone: i > 10 ? "bad" : "ok" });
+      metrics.push({ label: "Heat Release", value: `${i} MW`, tone: "warn" }, { label: "Room-to-Room Spread", value: `${Math.round(60 / Math.max(i, 1))} min`, tone: i > 8 ? "bad" : "ok" }, { label: "Egress Time Margin", value: `${Math.max(2, 14 - Math.round(i))} min`, tone: i > 10 ? "bad" : "ok" });
       calc.push("Design fire t²: Q = α·t²", `Time to flashover ≈ ${Math.round(60 / Math.max(i, 1))} min`);
-      if (i > 6) fails.push({ label: "Stair hall", detail: "Smoke layer reaches the landing before egress completes" });
+      if (i > 6) fails.push({ label: "Stair Hall", detail: "Smoke layer reaches the landing before egress completes" });
       break;
     }
     default: {
       risk = Math.round(clamp(i % 17 + t, 2, 60));
       headline = `${setup.type[0].toUpperCase() + setup.type.slice(1)} analysis complete at ${i}`;
-      metrics.push({ label: "Peak response", value: `${(i * 1.7).toFixed(1)}`, tone: "ok" }, { label: "Risk", value: `${risk}%`, tone: toneOf(risk) });
+      metrics.push({ label: "Peak Response", value: `${(i * 1.7).toFixed(1)}`, tone: "ok" }, { label: "Risk", value: `${risk}%`, tone: toneOf(risk) });
       calc.push(`Response = ${i} × 1.7 = ${(i * 1.7).toFixed(1)}`);
     }
   }
@@ -377,11 +377,11 @@ export const REC_LABEL: Record<RecCategory, string> = {
   design: "Design",
   structural: "Structural",
   material: "Material",
-  "cost-saving": "Cost saving",
+  "cost-saving": "Cost Saving",
   constructability: "Constructability",
   code: "Code",
   efficiency: "Efficiency",
-  error: "Detected error",
+  error: "Detected Error",
 };
 
 /** Run a (mock) AI design review. */
@@ -437,11 +437,11 @@ export async function generatePlan(prompt: string): Promise<GeneratedPlan> {
   const bath = Math.round(sqft * 0.08 * Math.max(baths, 1));
   const bedArea = Math.round((sqft - living - kitchen - bath - sqft * 0.1) / Math.max(beds, 1));
   const rooms = [
-    { name: "Living / dining", area: living },
+    { name: "Living / Dining", area: living },
     { name: "Kitchen", area: kitchen },
     ...Array.from({ length: beds }, (_, i) => ({ name: `Bedroom ${i + 1}`, area: bedArea })),
     { name: baths === 1 ? "Bath" : `${baths} baths`, area: bath },
-    { name: "Circulation / utility", area: Math.round(sqft * 0.1) },
+    { name: "Circulation / Utility", area: Math.round(sqft * 0.1) },
   ];
   return {
     title: `${sqft.toLocaleString("en-US")} sf · ${beds}-bed · ${baths}-bath`,

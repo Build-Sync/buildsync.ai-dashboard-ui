@@ -32,7 +32,7 @@ import { Flyout } from "./Flyout";
 import { collapsePlan, COLLAPSED_REM, estimatePanelRem, ribbonMetrics, useRibbonMetrics } from "./fit";
 import { panelColumns, RIBBON_BY_ID, type RibbonItem, type RibbonPanel, type RibbonTab } from "./ribbon.config";
 
-type RibbonState = Pick<WsState, "toggles" | "project" | "view" | "section" | "docks" | "camera" | "solar" | "rulers" | "guides" | "sectionBox" | "reviewMode" | "fullscreen" | "activeTool">;
+type RibbonState = Pick<WsState, "toggles" | "project" | "view" | "section" | "docks" | "camera" | "solar" | "rulers" | "guides" | "sectionBox" | "reviewMode" | "fullscreen" | "activeTool" | "labels" | "roomLabels" | "furnLabels" | "planShow" | "belowGrade" | "cutaway" | "mepLook">;
 
 /** Does the item's accent-fill rule hold in the current workspace state? */
 function isActive(item: RibbonItem, s: RibbonState, style: string): boolean {
@@ -58,6 +58,10 @@ function isActive(item: RibbonItem, s: RibbonState, style: string): boolean {
       return !s.camera.perspective;
     case "flag":
       return !!(s as unknown as Record<string, unknown>)[arg];
+    case "underlay":
+      return s.planShow !== "level";
+    case "look":
+      return arg === "plumbing" ? s.mepLook.plumbing === "pipes" : s.mepLook.electrical === "wires";
     default:
       return false;
   }
@@ -94,7 +98,7 @@ function PanelBody({ panel, s, style, onRun }: PanelProps) {
 
 function ExpandedPanel(props: PanelProps) {
   return (
-    <section aria-label={props.panel.name} className="flex shrink-0 flex-col border-r border-soft px-1">
+    <section aria-label={props.panel.name} data-ribbon-panel={props.panel.id} className="flex shrink-0 flex-col border-r border-soft px-1">
       <PanelBody {...props} />
     </section>
   );
@@ -109,7 +113,7 @@ function CollapsedPanel(props: PanelProps) {
   const icon = (panel.items.find((i) => i.size === "large") ?? panel.items[0]).icon;
 
   return (
-    <section aria-label={panel.name} className="flex shrink-0 flex-col border-r border-soft px-1">
+    <section aria-label={panel.name} data-ribbon-panel={panel.id} className="flex shrink-0 flex-col border-r border-soft px-1">
       <button
         ref={btn}
         type="button"
@@ -180,6 +184,13 @@ export const RibbonPanels = memo(function RibbonPanels() {
     reviewMode: s.reviewMode,
     fullscreen: s.fullscreen,
     activeTool: s.activeTool,
+    labels: s.labels,
+    roomLabels: s.roomLabels,
+    furnLabels: s.furnLabels,
+    planShow: s.planShow,
+    belowGrade: s.belowGrade,
+    cutaway: s.cutaway,
+    mepLook: s.mepLook,
   }));
   // theme and UI scale change text widths, so cached panel widths are only valid for one look
   const themeSetting = useApp((a) => selectEffective(a).display.theme);
@@ -192,7 +203,7 @@ export const RibbonPanels = memo(function RibbonPanels() {
   const cacheKey = `${tab.id}|${look}|${m.fonts}`;
   const measured = m.natural[cacheKey];
   const widths = measured ?? tab.panels.map((p) => estimatePanelRem(p) * m.rem);
-  const collapsed = collapsePlan(widths, m.container, COLLAPSED_REM * m.rem);
+  const collapsed = collapsePlan(widths, m.container, COLLAPSED_REM * m.rem, tab.panels.map((p) => !!p.pin));
 
   // available width for panels, re-read on resize and whenever theme / scale change
   useLayoutEffect(() => {

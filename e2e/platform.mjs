@@ -40,6 +40,10 @@ async function session(os, { settings, media, colorScheme = "dark" } = {}) {
       Object.defineProperty(Navigator.prototype, "platform", { get: () => platform, configurable: true });
       Object.defineProperty(Navigator.prototype, "userAgentData", { get: () => ({ platform: uaPlatform, mobile: false, brands: [] }), configurable: true });
       try {
+        // saved project work and the window layout persist between page loads now: every check starts clean
+        for (const k of Object.keys(localStorage)) if (k.startsWith("bs.work") || k === "bs.layout") localStorage.removeItem(k);
+        // the first-run tutorial prompt would cover the workspace
+        localStorage.setItem("bs.tour", "done");
         if (settings && !sessionStorage.getItem("__seeded")) {
           sessionStorage.setItem("__seeded", "1");
           localStorage.setItem("bs.settings", JSON.stringify({ state: { settings }, version: 1 }));
@@ -105,7 +109,7 @@ async function session(os, { settings, media, colorScheme = "dark" } = {}) {
     /** how many elements are selected, read from the Properties palette header */
     async selectionCount() {
       const t = await page.getByTestId("palette-properties").innerText();
-      if (/No selection/.test(t)) return 0;
+      if (/No Selection/.test(t)) return 0;
       const many = /(\d+) elements/.exec(t);
       return many ? Number(many[1]) : /1 selected/.test(t) ? 1 : -1;
     },
@@ -163,7 +167,7 @@ for (const os of Object.keys(OSES)) {
   await check(`${os}: shortcut labels use this OS's convention`, async () => {
     const s = await fresh(os);
     eq(await s.page.locator("kbd.kbd").first().innerText(), mac ? "⌘K" : "Ctrl+K", "search box hint");
-    await s.page.getByRole("button", { name: "Application menu" }).click();
+    await s.page.getByRole("button", { name: "Application Menu" }).click();
     has(await s.page.getByRole("menuitem", { name: /Save As/ }).innerText(), mac ? "⇧⌘S" : "Ctrl+Shift+S");
     await s.page.keyboard.press("Escape");
     const b = await s.viewportBox();
@@ -181,6 +185,8 @@ for (const os of Object.keys(OSES)) {
     await s.page.goto(BASE + "/settings/shortcuts", { waitUntil: "networkidle" });
     await s.page.getByTestId("pane-shortcuts").waitFor();
     const redo = s.page.locator("tr", { hasText: "REDO" }).first();
+    // the labels switch to this OS after hydration: wait for that instead of reading the server text
+    await s.until(async () => (await redo.innerText()).includes(mac ? "⇧⌘Z" : "Ctrl+Shift+Z"), "REDO shortcut drawn for this OS");
     const text = await redo.innerText();
     if (mac) {
       has(text, "⇧⌘Z");
@@ -193,7 +199,7 @@ for (const os of Object.keys(OSES)) {
     has(note, mac ? "⌘ (Command)" : "Ctrl as the main modifier");
     eq(note.includes("fn key"), mac, "the function-key note is Mac-only");
     // recording a shortcut stores the canonical combo whatever the OS
-    await s.page.getByRole("button", { name: "Edit shortcut for GRID", exact: true }).click();
+    await s.page.getByRole("button", { name: "Record shortcut for GRID", exact: true }).click();
     await s.page.getByLabel("Shortcut for GRID", { exact: true }).press(`${s.o.mod}+Alt+g`);
     await s.page.getByTestId("settings-apply").click();
     await sleep(200);
@@ -518,7 +524,7 @@ await check("IME: Enter that confirms a composition does not run the command; a 
 
 await check("command and search fields turn off auto-correct and auto-capitalise (macOS / iPadOS text substitution)", async () => {
   const s = await fresh("mac");
-  for (const sel of ['[data-testid="cmd-input"]', 'input[aria-label="Search commands and settings"]']) {
+  for (const sel of ['[data-testid="cmd-input"]', 'input[aria-label="Search Commands and Settings"]']) {
     const a = await s.page.locator(sel).evaluate((el) => ({ c: el.getAttribute("autocorrect"), z: el.getAttribute("autocapitalize"), sp: el.spellcheck }));
     eq(JSON.stringify(a), JSON.stringify({ c: "off", z: "off", sp: false }), sel);
   }

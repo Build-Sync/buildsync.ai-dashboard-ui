@@ -1,8 +1,8 @@
 /**
  * components/settings/SettingsFrame.tsx
  *
- * WHAT   The Settings window: a left navigation of the 11 settings pages (accent bar on the active one), a
- *        title and subtitle, the active pane, and a Close / Apply footer with an "Unapplied changes" notice. It
+ * WHAT   The Settings window: a left navigation of the 13 settings pages (accent bar on the active one), a
+ *        title and subtitle, the active pane, and a Close / Apply footer with an "Unapplied Changes" notice. It
  *        stays mounted while the user moves between pages, so the unapplied draft survives; the draft is
  *        discarded when the frame unmounts.
  * FOR    Both ways of opening settings: mode "modal" (the intercepting route over the workspace; Close =
@@ -15,7 +15,8 @@
  *        - Apply stays disabled: `dirty` compares the draft with the saved settings (settingsEqual in
  *          lib/settings.ts).
  *        - Esc in a nested dialog closes the whole window: nested dialogs must carry data-nested
- *          (components/ui/Modal.tsx sets it) so the frame ignores that Esc.
+ *          (components/ui/Modal.tsx sets it) so the frame ignores that Esc. A field that uses Esc itself (the
+ *          shortcut recorder, the alias editor) calls preventDefault, and the frame then stays open.
  *        - Focus escapes the dialog: useFocusTrap(ref, mode === "modal") is what keeps Tab inside.
  *
  * Author: Giordano Bertin-Maurice
@@ -33,7 +34,7 @@ import { useApp, useAppApi } from "@/lib/store/app-provider";
 import { cn } from "@/lib/utils";
 import { useFocusTrap } from "./useFocusTrap";
 
-/* Settings frame (spec §11): left nav of 11 items (accent bar on the active one), right pane with an
+/* Settings frame (spec §11): left nav of 13 items (accent bar on the active one), right pane with an
  * H2 title + subtitle, footer Close / Apply.
  *
  *  - mode "modal": rendered through the intercepting route over the workspace. Close = router.back(),
@@ -69,6 +70,8 @@ export function SettingsFrame({ mode, children }: { mode: "page" | "modal"; chil
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // a field that used Esc itself (cancelling a shortcut recording or an alias edit) marks it handled: stay open
+      if (e.defaultPrevented) return;
       if (e.key === "Escape" && !(e.target as HTMLElement | null)?.closest?.('[role="dialog"][data-nested]')) close();
     };
     document.addEventListener("keydown", onKey);
@@ -87,7 +90,7 @@ export function SettingsFrame({ mode, children }: { mode: "page" | "modal"; chil
       data-mode={mode}
       className={cn("flex overflow-hidden bg-panel outline-none", mode === "modal" ? "anim-pop h-full w-full max-w-[74rem] rounded-xl border border-line shadow-pop" : "h-dvh w-full")}
     >
-      <nav aria-label="Settings sections" className="flex w-[15rem] shrink-0 flex-col border-r border-line bg-panel-alt py-3">
+      <nav aria-label="Settings Sections" className="flex w-[15rem] shrink-0 flex-col border-r border-line bg-panel-alt py-3">
         <div className="mb-2 flex items-center gap-2 px-4 pb-2">
           <span className="grid size-6 place-items-center rounded-md bg-accent text-[0.8125rem] font-bold text-on-accent">B</span>
           <span className="text-[0.9375rem] font-semibold text-t1">Settings</span>
@@ -127,7 +130,7 @@ export function SettingsFrame({ mode, children }: { mode: "page" | "modal"; chil
         <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-soft bg-panel-alt px-6 py-3">
           {dirty && (
             <span className="mr-auto flex items-center gap-1.5 text-[0.75rem] text-warn" role="status">
-              <span className="size-1.5 rounded-full bg-warn" /> Unapplied changes
+              <span className="size-1.5 rounded-full bg-warn" /> Unapplied Changes
             </span>
           )}
           <button className="btn h-8 px-4" onClick={close} data-testid="settings-close">

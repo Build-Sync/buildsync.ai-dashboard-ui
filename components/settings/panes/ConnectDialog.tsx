@@ -40,7 +40,7 @@ export function ConnectDialog({ agentId }: { agentId: AgentId }) {
   const [baseUrl, setBaseUrl] = useState(agent.baseUrl ?? meta.baseUrl ?? "");
   const [apiKey, setApiKey] = useState("");
   const [replaceKey, setReplaceKey] = useState(!managing);
-  const [tier, setTier] = useState<AgentModelTier>(agent.model === "Fast" ? "fast" : agent.model === "Most capable" ? "capable" : "auto");
+  const [tier, setTier] = useState<AgentModelTier>(agent.model === "Fast" ? "fast" : agent.model === "Most Capable" ? "capable" : "auto");
   const [scopes, setScopes] = useState<string[]>(agent.scopes.length ? agent.scopes : PERMISSION_SCOPES.filter((p) => p.default).map((p) => p.id));
   const [name, setName] = useState(agentId === "custom" && managing ? agent.name : "");
   const [test, setTest] = useState<TestResult | null>(null);
@@ -109,7 +109,7 @@ export function ConnectDialog({ agentId }: { agentId: AgentId }) {
             Cancel
           </button>
           <button className="btn btn-primary" onClick={submit} disabled={busy} data-testid="connect-submit">
-            {busy && <Spinner size={13} />} {managing ? "Save changes" : "Connect"}
+            {busy && <Spinner size={13} />} {managing ? "Save Changes" : "Connect"}
           </button>
         </>
       }
@@ -125,15 +125,15 @@ export function ConnectDialog({ agentId }: { agentId: AgentId }) {
 
         {agentId === "custom" && (
           <label className="block">
-            <span className="label-xs">Agent name</span>
+            <span className="label-xs">Agent Name</span>
             <input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Firm assistant" />
           </label>
         )}
 
         <div>
-          <span className="label-xs">Connection method</span>
+          <span className="label-xs">Connection Method</span>
           <div className="mt-1.5">
-            <Segmented<AuthMethod> label="Connection method" value={method} onChange={(m) => { setMethod(m); setTest(null); }} options={(["api-key", "oauth", "mcp"] as AuthMethod[]).map((m) => ({ value: m, label: m === "api-key" ? "API key" : m === "oauth" ? "Sign in (OAuth)" : "MCP / endpoint URL", disabled: !meta.methods.includes(m) }))} />
+            <Segmented<AuthMethod> label="Connection Method" value={method} onChange={(m) => { setMethod(m); setTest(null); }} options={(["api-key", "oauth", "mcp"] as AuthMethod[]).map((m) => ({ value: m, label: m === "api-key" ? "API Key" : m === "oauth" ? "Sign in (OAuth)" : "MCP / Endpoint URL", disabled: !meta.methods.includes(m) }))} />
           </div>
         </div>
 
@@ -148,11 +148,11 @@ export function ConnectDialog({ agentId }: { agentId: AgentId }) {
         {showKey && (
           <div>
             <label htmlFor="api-key" className="label-xs">
-              API key{meta.keyOptional ? " (optional)" : ""}
+              API Key{meta.keyOptional ? " (optional)" : ""}
             </label>
             {managing && !replaceKey ? (
               <div className="mt-1 flex items-center gap-2">
-                <input id="api-key" className="input mono" value={agent.maskedKey ?? ""} readOnly aria-label="Stored key (masked)" />
+                <input id="api-key" className="input mono" value={agent.maskedKey ?? ""} readOnly aria-label="Stored Key (Masked)" />
                 <button className="btn shrink-0" onClick={() => setReplaceKey(true)}>
                   Replace
                 </button>
@@ -169,9 +169,9 @@ export function ConnectDialog({ agentId }: { agentId: AgentId }) {
         {method === "oauth" && <p className="rounded-md bg-t1/5 px-3 py-2 text-[0.75rem] text-t2">You&apos;ll be sent to {meta.vendor} to sign in and approve access. (Mocked here: no redirect happens.)</p>}
 
         <div>
-          <span className="label-xs">Default model</span>
+          <span className="label-xs">Default Model</span>
           <div className="mt-1.5">
-            <Segmented<AgentModelTier> label="Default model" value={tier} onChange={setTier} options={[{ value: "auto", label: `${MODEL_TIER_LABEL.auto} (recommended)` }, { value: "fast", label: MODEL_TIER_LABEL.fast }, { value: "capable", label: MODEL_TIER_LABEL.capable }]} />
+            <Segmented<AgentModelTier> label="Default Model" value={tier} onChange={setTier} options={[{ value: "auto", label: `${MODEL_TIER_LABEL.auto} (recommended)` }, { value: "fast", label: MODEL_TIER_LABEL.fast }, { value: "capable", label: MODEL_TIER_LABEL.capable }]} />
           </div>
         </div>
 
@@ -186,7 +186,7 @@ export function ConnectDialog({ agentId }: { agentId: AgentId }) {
 
         <div>
           <button className="btn" onClick={runTest} disabled={testing} data-testid="test-connection">
-            {testing ? <Spinner size={13} /> : <Icon name="webhook" size={13} />} Test connection
+            {testing ? <Spinner size={13} /> : <Icon name="webhook" size={13} />} Test Connection
           </button>
           {test && (
             <div role="status" className={`anim-fade mt-2 flex items-center gap-2 rounded-md border px-3 py-2 text-[0.75rem] ${test.ok ? "border-ok/40 bg-ok/10 text-ok" : "border-bad/40 bg-bad/10 text-bad"}`} data-testid="test-result">

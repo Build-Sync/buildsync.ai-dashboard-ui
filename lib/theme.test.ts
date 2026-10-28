@@ -1,7 +1,7 @@
 /**
  * lib/theme.test.ts
  *
- * WHAT   Unit tests for lib/theme.ts: how the Theme setting, including "Match system", resolves into the theme drawn.
+ * WHAT   Unit tests for lib/theme.ts: how the Theme setting, including "Match System", resolves into the theme drawn.
  * FOR    `npm test`. Keep in step with the plain-JS copy of the rule in public/theme-boot.js.
  *
  * Author: Giordano Bertin-Maurice

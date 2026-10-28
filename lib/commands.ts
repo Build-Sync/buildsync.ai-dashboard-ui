@@ -6,6 +6,15 @@
  *        aliases, default shortcut and a run() function. Also resolveCommand (typed text to command, user
  *        aliases first), runInput (the command line) and runCommand (ribbon and menus), and askAgent (anything
  *        unknown goes to the AI agent).
+ *        Drawing and editing commands (LINE, WALL, MOVE, TRIM …) start the tool of the same name in lib/draw
+ *        (beginTool); while a tool runs, typed points and keywords go to it before anything else (runInput).
+ *        DELETE, copy / paste, duplicate and group act on drawn items and built-in elements; SAVEAS downloads a
+ *        .bsd file and OPENFILE loads one (lib/persist.ts). The fixture pieces (LIGHT, SWITCH, SINK, TOILET, TUB …:
+ *        PIECES) start the ELEC / PLUMB / HVAC tool with that piece picked; PIPEVIEW and WIREVIEW switch how pipes
+ *        and wires are drawn; SWITCHON turns the selected switches on or off. WALKIN / NEXTROOM / PREVROOM /
+ *        LEAVEROOM (and 3DWALK) stand you inside a room and take you from room to room (enterRoom, walkTo: the
+ *        camera glides there); ROTATE90 / ROTATE90CCW turn the selection a quarter (or, while a placing tool runs,
+ *        the piece it puts down next); FURNLABELS switches furniture names.
  * FOR    One place to add a feature: add a command here, then reference its name from the ribbon
  *        (ribbon.config.ts) or a menu. Shortcuts are stored in canonical form where "Ctrl" means the primary
  *        modifier (⌘ on a Mac); lib/shortcuts.ts and useHotkeys.ts match them per OS.
@@ -18,6 +27,8 @@
  *          here.
  *        - A shortcut does not fire: another command may use the same combo, or the browser reserves it; check
  *          bindingsOf in lib/shortcuts.ts and Settings → Shortcuts (which flags clashes).
+ *        - A drawing command does nothing: its name must be a key of TOOLS (lib/draw/tools.ts, modify.ts);
+ *          lib/persist.test.ts fails when a tool() command has no tool.
  *        - Commands run against CommandCtx = { ws, app, router }; use wsState(c) / c.app.getState() inside
  *          run().
  *
@@ -26,8 +37,23 @@
  */
 import { AGENT_META } from "./agents";
 import { routeLabel, routePrompt } from "./services/ai";
-import { getScene, levelLabel } from "./scene";
-import { describeView } from "./scene/camera";
+import { levelLabel } from "./scene";
+import { applyChange, beginTool, deleteChange, planTransform, sceneOf, toolEnter, toolText } from "./draw";
+import { affRotate, affTranslate } from "./draw/geom";
+import { turnPlacing } from "./draw/tools";
+import { exportBsd, parseBsd, snapshotOf } from "./persist";
+import { saveFile } from "./save-file";
+import { HOME_CAMERA, describeView, normBearing, type Camera } from "./scene/camera";
+import { roomAt, roomGroups, roomView, roomsOfBuilding, roomsOn } from "./draw/interior";
+import { isPlaced } from "./geo";
+import { isLinkedId } from "./links";
+import { GROUNDS, GROUND_TYPES, groundOf, parseGround, type GroundType } from "./ground";
+import { pieceOf } from "./draw/furniture";
+import { fixtureOf } from "./draw/fixtures";
+import { constructabilityReport, gradingReport, materialReport } from "./reports";
+import { aerialItem, areaAround, groundFromMap } from "./sitemap";
+import { uid } from "./utils";
+import { openView } from "./views";
 import type { AppStore } from "./store/app-store";
 import type { ModalId, ToggleKey, WsStore } from "./store/workspace-store";
 import type { LayerId, PaletteId, RibbonTabId, VisualStyle } from "./types";
@@ -77,6 +103,11 @@ function openPanel(c: CommandCtx, tab: RibbonTabId | null, panel: PaletteId) {
   s.setPanel(panel);
 }
 
+/** Give the site another kind of ground (one undo step): the project remembers it and the ground's surface colour follows. */
+export function setGround(ws: CommandCtx["ws"], g: GroundType): void {
+  ws.getState().edit("Ground type", (st) => ({ project: { ...st.project, ground: g }, colors: { ...st.colors, topography: GROUNDS[g].top } }));
+}
+
 const onOff = (v: boolean) => (v ? "<On>" : "<Off>");
 
 function flip(c: CommandCtx, key: ToggleKey, label: string) {
@@ -85,8 +116,15 @@ function flip(c: CommandCtx, key: ToggleKey, label: string) {
   log(c, "ok", `✓ ${label} ${onOff(wsState(c).toggles[key])}`);
 }
 
-/** Generic drafting/modelling tool: becomes the active tool and prints an AutoCAD-style prompt. */
-function tool(name: string, title: string, desc: string, group: string, prompt = "Specify first point:", aliases?: string[], needsSel = false): CommandDef {
+/** The names of the commands that start a drawing or editing tool (lib/commands.test.ts checks each has a tool). */
+export const TOOL_COMMANDS = new Set<string>();
+
+/**
+ * Drawing / editing tool: starts the tool of the same name from lib/draw (click points in the viewport or type them
+ * in the command line). A name without a tool there (it would be a bug, a unit test checks) only prints its prompt.
+ */
+function tool(name: string, title: string, desc: string, group: string, prompt = "Specify first point:", aliases?: string[]): CommandDef {
+  TOOL_COMMANDS.add(name);
   return {
     name,
     title,
@@ -94,11 +132,11 @@ function tool(name: string, title: string, desc: string, group: string, prompt =
     group,
     aliases,
     run: (c) => {
+      if (beginTool(c, name)) return;
       const s = wsState(c);
       if (s.reviewMode) return toast(c, "Review mode is read-only.", "warn");
-      const p = needsSel && !s.selection.length ? "Select objects:" : needsSel ? `${s.selection.length} selected. ${prompt}` : prompt;
-      s.setTool(name, p);
-      log(c, "info", `${name}  ${p}`);
+      s.setTool(name, prompt);
+      log(c, "info", `${name}  ${prompt}`);
     },
   };
 }
@@ -145,40 +183,176 @@ function prompt(name: string, title: string, desc: string, text: string, run = f
   };
 }
 
-function report(name: string, title: string, desc: string, group: string, lines: string[], tab?: RibbonTabId): CommandDef {
+/** A check worked out from the model when it runs (lib/reports.ts): its lines go to the command line. */
+function computed(name: string, title: string, desc: string, lines: (c: CommandCtx) => string[]): CommandDef {
   return {
     name,
     title,
     desc,
-    group,
+    group: "Analyze",
     run: (c) => {
-      if (tab) wsState(c).setTab(tab);
-      log(c, "ok", `✓ ${title}`);
-      lines.forEach((l) => log(c, "info", `  ${l}`));
-      toast(c, `${title} complete`, "info");
+      const out = lines(c);
+      log(c, "ok", `✓ ${title} (from the model, advisory)`);
+      out.forEach((l) => log(c, "info", `  ${l}`));
+      wsState(c).setCmdInput("", false);
+      wsState(c).setDockSize("cmdline", "large");
+      toast(c, `${title}: ${out.length} findings in the command line`, "info");
     },
   };
 }
 
 const layerTool = (name: string, title: string, desc: string, layer: LayerId, prompt: string): CommandDef => ({
-  name,
+  name: (TOOL_COMMANDS.add(name), name),
   title,
   desc,
   group: "Home",
   run: (c) => {
     const s = wsState(c);
     const cur = s.project.layers.find((l) => l.id === layer);
-    const next = !cur?.visible;
-    s.toggleLayer(layer, next);
-    if (next) {
-      s.setTool(name, prompt);
-      log(c, "ok", `✓ ${title} layer on. ${prompt}`);
+    // pressing the button again while its tool is running turns the layer (and the tool) off
+    const turnOff = !!cur?.visible && s.activeTool === name;
+    s.toggleLayer(layer, !turnOff);
+    if (!turnOff) {
+      log(c, "ok", `✓ ${title} layer on`);
+      if (!beginTool(c, name)) s.setTool(name, prompt);
     } else {
       s.setTool(null);
       log(c, "ok", `✓ ${title} layer off`);
     }
   },
 });
+
+/** The fixture pieces with a command of their own: [command, title, description, tool, catalogue id, aliases]. */
+const PIECES: [string, string, string, string, string, string[]][] = [
+  ["LIGHT", "Light", "Place a ceiling light (or pick a recessed light, pendant or sconce in the tool bar); wire it to a switch", "ELEC", "ceilinglight", ["CEILINGLIGHT", "LIGHTS"]],
+  ["SWITCH", "Switch", "Place a light switch on a wall (single, 3-way or dimmer in the tool bar); then WIRE it to the lights", "ELEC", "switch", ["LIGHTSWITCH"]],
+  ["OUTLET", "Outlet", "Place an outlet on a wall (duplex, GFCI or 240 V in the tool bar)", "ELEC", "outlet", ["RECEPTACLE"]],
+  ["CEILINGFAN", "Ceiling Fan", "Place a ceiling fan with a light; wire it to a switch", "ELEC", "ceilingfan", ["FAN"]],
+  ["SMOKEDETECTOR", "Smoke Detector", "Place a smoke / CO detector on the ceiling", "ELEC", "smoke", ["SMOKE"]],
+  ["THERMOSTAT", "Thermostat", "Place a thermostat on a wall", "ELEC", "thermostat", []],
+  ["INVERTER", "Inverter", "Place a solar inverter on a wall; wire the panel and the solar array's circuit to it", "ELEC", "inverter", ["SOLARINVERTER"]],
+  ["SINK", "Sink", "Place a bathroom vanity and sink against a wall (kitchen sink, pedestal sink or a double vanity in the tool bar)", "PLUMB", "vanity", ["VANITY", "LAVATORY"]],
+  ["FAUCET", "Faucet", "Place a faucet on a counter", "PLUMB", "faucet", []],
+  ["TOILET", "Toilet", "Place a toilet against a wall", "PLUMB", "toilet", ["WC"]],
+  ["TUB", "Bathtub", "Place a bathtub (alcove or freestanding in the tool bar)", "PLUMB", "bathtub", ["BATHTUB"]],
+  ["SHOWER", "Shower", "Place a glass shower (36 × 36) in a corner or against a wall", "PLUMB", "shower", []],
+  ["WATERHEATER", "Water Heater", "Place a water heater (tank or tankless in the tool bar); pipe hot water from it to the fixtures", "PLUMB", "waterheater", ["HOTWATER"]],
+  ["ACUNIT", "AC Unit", "Place an AC condenser outside (or a mini-split in the tool bar)", "HVAC", "condenser", ["AC", "CONDENSER", "AIRCON"]],
+];
+
+/** A command that starts a fixture tool with one piece of the catalogue picked. */
+function piece(name: string, title: string, desc: string, toolName: string, type: string, aliases: string[]): CommandDef {
+  return {
+    name,
+    title,
+    desc,
+    group: "Systems",
+    aliases,
+    run: (c) => {
+      const s = wsState(c);
+      if (s.reviewMode) return toast(c, "Review mode is read-only.", "warn");
+      s.patch({ toolOpts: { ...s.toolOpts, [toolName]: { ...(s.toolOpts[toolName] ?? {}), type } } });
+      beginTool(c, toolName);
+    },
+  };
+}
+
+/**
+ * A quarter turn: the selection about the centre of its bounds, or, while a placing tool runs, the piece it puts down
+ * next. Locked elements and linked projects stay as they are.
+ */
+function quarterTurn(c: CommandCtx, clockwise: boolean): void {
+  const s = wsState(c);
+  if (s.reviewMode) return toast(c, "Review mode is read-only.", "warn");
+  const by = clockwise ? -90 : 90;
+  const tool = s.session?.tool;
+  if (tool) {
+    const rot = turnPlacing(s, tool, by);
+    if (rot !== null) return log(c, "ok", `✓ Turned to ${rot}°`);
+  }
+  const scene = sceneOf(s);
+  const lockedLayer = (id: string) => !!s.project.layers.find((l) => l.id === scene.elementById[id]?.layer)?.locked;
+  const ids = s.selection.filter((id) => scene.elementById[id] && scene.elementById[id].layer !== "topography" && !isLinkedId(id) && !s.locked.includes(id) && !lockedLayer(id));
+  if (!ids.length) return toast(c, s.selection.length ? "Those elements are locked or part of a linked project." : "Select what to turn first (or use this while placing a piece).", "info");
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const id of ids) {
+    const e = scene.elementById[id];
+    x0 = Math.min(x0, e.min[0]); y0 = Math.min(y0, e.min[1]); x1 = Math.max(x1, e.max[0]); y1 = Math.max(y1, e.max[1]);
+  }
+  const r = planTransform(s, scene, ids, { aff: affRotate((by * Math.PI) / 180, (x0 + x1) / 2, (y0 + y1) / 2) }, false);
+  if (r.skipped.length) toast(c, `${r.skipped.length} element(s) can't turn a quarter (gables and roof pieces turn only 180°; doors slide along their wall).`, "warn");
+  if (!(r.change.add?.length || r.change.replace?.length || Object.keys(r.change.xf ?? {}).length)) return;
+  s.edit(clockwise ? "Turn 90° clockwise" : "Turn 90° counter-clockwise", (st) => applyChange(st, r.change));
+  log(c, "ok", `✓ Turned ${ids.length - r.skipped.length} object(s) 90° ${clockwise ? "clockwise" : "counter-clockwise"}`);
+}
+
+/* ── the room view ────────────────────────────────────────────────────── */
+let glideRun = 0;
+
+/** Move the camera to `to` in about half a second (a walk from room to room), or at once without animation frames. */
+function glide(c: CommandCtx, to: Camera): void {
+  const s = wsState(c);
+  const from = s.camera;
+  if (typeof requestAnimationFrame !== "function" || !from.eye || !to.eye) return s.setCamera(to);
+  const run = ++glideRun;
+  const a = from.eye;
+  const b = to.eye;
+  const turn = ((to.bearing - from.bearing + 540) % 360) - 180;
+  const t0 = performance.now();
+  const frame = (now: number) => {
+    if (run !== glideRun || !wsState(c).camera.eye) return;
+    const k = Math.min(1, (now - t0) / 450);
+    const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+    wsState(c).setCamera({ ...to, eye: [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e], bearing: normBearing(from.bearing + turn * e), pitch: from.pitch + (to.pitch - from.pitch) * e });
+    if (k < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+/** Stand inside a room (the room view), remembering the 3D view to come back to. */
+export function enterRoom(c: CommandCtx, roomId: string): boolean {
+  const s = wsState(c);
+  const scene = sceneOf(s);
+  const room = scene.rooms.find((r) => r.id === roomId);
+  if (!room) return false;
+  const outside = s.outsideCamera ?? (s.camera.eye ? { ...HOME_CAMERA } : s.camera);
+  s.patch({ view: "3d", layoutTab: "model", insideRoom: room.id, outsideCamera: outside, navTool: "walk", plan: { ...s.plan, level: room.level } });
+  glide(c, { ...s.camera, ...roomView(scene, room), perspective: true, zoom: 1, panX: 0, panY: 0 });
+  log(c, "ok", `✓ Inside ${room.name}: drag to look around, scroll to zoom, arrow keys to walk; double-click another room's name to go there; Esc leaves`);
+  return true;
+}
+
+/** In the room view: walk to a point of the floor (a double-click on it), into whichever room it is in. */
+export function walkTo(c: CommandCtx, pt: [number, number]): void {
+  const s = wsState(c);
+  const eye = s.camera.eye;
+  if (!eye) return;
+  const scene = sceneOf(s);
+  const room = roomAt(scene, s.plan.level, pt);
+  if (room && room.id !== s.insideRoom) s.patch({ insideRoom: room.id });
+  glide(c, { ...s.camera, eye: [pt[0], pt[1], eye[2]] });
+}
+
+/** The next (or previous) room of the building you are in, storey by storey from the ground up, round to the first. */
+function stepRoom(c: CommandCtx, dir: 1 | -1): void {
+  const s = wsState(c);
+  const scene = sceneOf(s);
+  const here = scene.rooms.find((r) => r.id === s.insideRoom);
+  const rooms = here ? roomsOfBuilding(scene, here) : (roomGroups(scene, s.project.name)[0]?.levels.flatMap((l) => l.rooms) ?? []);
+  if (!rooms.length) return toast(c, "This project has no rooms yet: name them with ROOM (Home → Building).", "warn");
+  const i = here ? rooms.findIndex((r) => r.id === here.id) : dir > 0 ? -1 : 0;
+  enterRoom(c, rooms[(i + dir + rooms.length) % rooms.length].id);
+}
+
+/** Paste or duplicate: copies of the ids, one foot north-east of the originals, selected afterwards. */
+function pasteOffset(c: CommandCtx, ids: string[], label: string) {
+  const s = wsState(c);
+  const r = planTransform(s, sceneOf(s), ids, { aff: affTranslate(1, 1) }, true);
+  if (!r.newIds.length) return toast(c, "Nothing to copy (those elements can't be duplicated).", "warn");
+  s.edit(label, (st) => applyChange(st, r.change));
+  s.select(r.newIds);
+  log(c, "ok", `✓ ${label}: ${r.newIds.length} element(s)`);
+}
 
 /* ── AI ───────────────────────────────────────────────────────────────── */
 export async function askAgent(c: CommandCtx, text: string) {
@@ -191,7 +365,7 @@ export async function askAgent(c: CommandCtx, text: string) {
     return;
   }
   const active = connected.includes(app.activeAgentId) ? app.activeAgentId : connected[0];
-  const scene = getScene(s.project.sceneKind);
+  const scene = sceneOf(s);
   s.patch({ cmdBusy: true });
   try {
     const share = app.settings.ai.shareContext;
@@ -263,13 +437,44 @@ function buildCommands(): CommandDef[] {
     {
       name: "SAVEAS",
       title: "Save As",
-      desc: "Save a copy of the project",
+      desc: "Download the project as a .bsd file",
       group: "File",
       key: "Ctrl+Shift+S",
       run: (c) => {
-        if (wsState(c).mode === "demo") return wsState(c).openModal("start-free");
-        toast(c, "Saved a copy (mock)", "info");
-        log(c, "ok", `✓ Saved copy of ${wsState(c).project.fileName}`);
+        const s = wsState(c);
+        const name = s.project.fileName.endsWith(".bsd") ? s.project.fileName : `${s.project.fileName}.bsd`;
+        saveFile(name, exportBsd(snapshotOf(s), s.project.versions), "application/json");
+        toast(c, `Downloaded ${name}`, "ok");
+        log(c, "ok", `✓ Saved a copy as ${name}`);
+      },
+    },
+    {
+      name: "OPENFILE",
+      title: "Open File",
+      desc: "Load a .bsd project file into this project",
+      group: "File",
+      aliases: ["OPENBSD"],
+      run: (c) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".bsd,application/json";
+        input.style.display = "none";
+        input.setAttribute("data-testid", "bsd-input");
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          input.remove();
+          if (!file) return;
+          const parsed = parseBsd(await file.text());
+          if (!parsed) return toast(c, `${file.name} is not a BuildSync project file.`, "bad");
+          const s = wsState(c);
+          const kind = (parsed.work.project as { sceneKind?: string } | undefined)?.sceneKind;
+          if (kind && kind !== s.project.sceneKind) return toast(c, `${file.name} is a different kind of project. Open it from the Start tab.`, "warn");
+          s.importWork(parsed.work, parsed.versions);
+          toast(c, `Opened ${file.name}. Undo brings back what you had.`, "ok");
+          log(c, "ok", `✓ Opened ${file.name}`);
+        };
+        document.body.appendChild(input);
+        input.click();
       },
     },
     {
@@ -300,8 +505,8 @@ function buildCommands(): CommandDef[] {
       },
     },
     modal("PROJINFO", "Project Information", "Name, address, client, architect, engineer, jurisdiction", "File", "project-info"),
-    modal("VERSIONS", "Project Versions", "View and restore earlier versions", "Collaborate", "versions", { tab: "versions" }),
-    modal("HISTORY", "History", "Activity log for this project", "Collaborate", "versions", { tab: "history" }),
+    showPanel("VERSIONS", "Project Versions", "Version history: save, compare and restore", "Collaborate", "collaborate", "versions", ["VERSION"], (c) => wsState(c).patch({ versionsTab: "versions" })),
+    showPanel("HISTORY", "History", "Activity log for this project", "Collaborate", "collaborate", "versions", undefined, (c) => wsState(c).patch({ versionsTab: "history" })),
     modal("EXPORT", "Export", "PDF, IFC, DWG, report or render", "File", "export"),
     {
       name: "ARCHIVE",
@@ -331,16 +536,110 @@ function buildCommands(): CommandDef[] {
 
   /* edit (context menu) */
   add(
-    { name: "CUTCLIP", title: "Cut", desc: "Cut the selection", group: "Edit", key: "Ctrl+X", run: (c) => { const s = wsState(c); if (!s.selection.length) return toast(c, "Nothing selected", "warn"); s.patch({ clipboard: s.selection }); s.setHidden(s.selection, true); toast(c, `Cut ${s.selection.length} element(s)`); } },
+    {
+      name: "CUTCLIP",
+      title: "Cut",
+      desc: "Cut the selection",
+      group: "Edit",
+      key: "Ctrl+X",
+      run: (c) => {
+        const s = wsState(c);
+        if (!s.selection.length) return toast(c, "Nothing selected", "warn");
+        if (s.selection.some((i) => s.locked.includes(i))) return toast(c, "Locked elements can't be cut. Unlock first.", "warn");
+        const n = s.selection.length;
+        s.patch({ clipboard: s.selection });
+        s.edit("Cut", (st) => applyChange(st, deleteChange(st, st.selection)));
+        toast(c, `Cut ${n} element(s)`);
+      },
+    },
     { name: "COPYCLIP", title: "Copy", desc: "Copy the selection", group: "Edit", key: "Ctrl+C", run: (c) => { const s = wsState(c); if (!s.selection.length) return toast(c, "Nothing selected", "warn"); s.patch({ clipboard: s.selection }); toast(c, `Copied ${s.selection.length} element(s)`); } },
-    { name: "PASTECLIP", title: "Paste", desc: "Paste at the cursor", group: "Edit", key: "Ctrl+V", run: (c) => { const s = wsState(c); if (!s.clipboard.length) return toast(c, "Clipboard is empty", "warn"); s.setHidden(s.clipboard, false); log(c, "ok", `✓ Pasted ${s.clipboard.length} element(s)`); } },
-    { name: "DUPLICATE", title: "Duplicate", desc: "Duplicate the selection in place", group: "Edit", key: "Ctrl+D", run: (c) => { const s = wsState(c); if (!s.selection.length) return toast(c, "Nothing selected", "warn"); s.edit("Duplicate", () => ({})); log(c, "ok", `✓ Duplicated ${s.selection.length} element(s) (offset 1'-0")`); } },
-    { name: "DELETE", title: "Delete", desc: "Delete the selection", group: "Edit", key: "Delete", aliases: ["ERASE"], run: (c) => { const s = wsState(c); if (!s.selection.length) return toast(c, "Nothing selected", "warn"); const locked = s.selection.filter((i) => s.locked.includes(i)); if (locked.length) return toast(c, "Locked elements can't be deleted. Unlock first.", "warn"); const n = s.selection.length; s.setHidden(s.selection, true); s.clearSelection(); log(c, "ok", `✓ Deleted ${n} element(s)`); } },
-    { name: "SELECTALL", title: "Select All", desc: "Select every visible element", group: "Edit", key: "Ctrl+A", run: (c) => { const s = wsState(c); const scene = getScene(s.project.sceneKind); const vis = s.project.layers.filter((l) => l.visible).map((l) => l.id); s.select(scene.elements.filter((e) => vis.includes(e.layer) && !s.hidden.includes(e.id) && e.layer !== "topography").map((e) => e.id)); log(c, "ok", `✓ ${wsState(c).selection.length} selected`); } },
+    {
+      name: "PASTECLIP",
+      title: "Paste",
+      desc: "Paste a copy next to the original",
+      group: "Edit",
+      key: "Ctrl+V",
+      run: (c) => {
+        const s = wsState(c);
+        if (!s.clipboard.length) return toast(c, "Clipboard is empty", "warn");
+        pasteOffset(c, s.clipboard, "Paste");
+      },
+    },
+    {
+      name: "DUPLICATE",
+      title: "Duplicate",
+      desc: "Duplicate the selection, offset by 1 ft",
+      group: "Edit",
+      key: "Ctrl+D",
+      run: (c) => {
+        const s = wsState(c);
+        if (!s.selection.length) return toast(c, "Nothing selected", "warn");
+        pasteOffset(c, s.selection, "Duplicate");
+      },
+    },
+    {
+      name: "DELETE",
+      title: "Delete",
+      desc: "Delete the selection",
+      group: "Edit",
+      key: "Delete",
+      aliases: ["ERASE"],
+      run: (c) => {
+        const s = wsState(c);
+        if (!s.selection.length) return toast(c, "Nothing selected", "warn");
+        const locked = s.selection.filter((i) => s.locked.includes(i));
+        if (locked.length) return toast(c, "Locked elements can't be deleted. Unlock first.", "warn");
+        // a linked project is read-only here: Unlink it in the Links palette, or open it to delete there
+        const own = s.selection.filter((i) => !isLinkedId(i));
+        if (own.length < s.selection.length) toast(c, "Elements of a linked project can't be deleted here: open that project, or Unlink it in the Links palette.", "warn");
+        if (!own.length) return;
+        const n = own.length;
+        s.edit("Delete", (st) => applyChange(st, deleteChange(st, own)));
+        s.clearSelection();
+        log(c, "ok", `✓ Deleted ${n} element(s)`);
+      },
+    },
+    { name: "SELECTALL", title: "Select All", desc: "Select every visible element", group: "Edit", key: "Ctrl+A", run: (c) => { const s = wsState(c); const scene = sceneOf(s); const vis = s.project.layers.filter((l) => l.visible).map((l) => l.id); s.select(scene.elements.filter((e) => vis.includes(e.layer) && !s.hidden.includes(e.id) && e.layer !== "topography").map((e) => e.id)); log(c, "ok", `✓ ${wsState(c).selection.length} selected`); } },
     { name: "DESELECT", title: "Deselect All", desc: "Clear the selection", group: "Edit", key: "Esc", run: (c) => wsState(c).clearSelection() },
     { name: "FIND", title: "Find / Replace", desc: "Search commands, settings and elements", group: "Edit", key: "Ctrl+K", run: (c) => wsState(c).patch({ searchFocus: wsState(c).searchFocus + 1 }) },
-    { name: "GROUP", title: "Group", desc: "Group the selection", group: "Edit", key: "Ctrl+G", run: (c) => { const s = wsState(c); if (s.selection.length < 2) return toast(c, "Select two or more elements to group", "warn"); s.edit("Group", () => ({})); log(c, "ok", `✓ Grouped ${s.selection.length} elements as GROUP-01`); } },
-    { name: "UNGROUP", title: "Ungroup", desc: "Dissolve the selected group", group: "Edit", run: (c) => { wsState(c).edit("Ungroup", () => ({})); log(c, "ok", "✓ Ungrouped"); } },
+    {
+      name: "GROUP",
+      title: "Group",
+      desc: "Group the selection so it selects and moves as one",
+      group: "Edit",
+      key: "Ctrl+G",
+      run: (c) => {
+        const s = wsState(c);
+        if (s.selection.length < 2) return toast(c, "Select two or more elements to group", "warn");
+        const members = [...s.selection];
+        const n = Object.keys(s.groups).length + 1;
+        const id = `GROUP-${String(n).padStart(2, "0")}`;
+        const groups: Record<string, string[]> = {};
+        // members leave any group they were in; groups left with one member dissolve
+        for (const [g, ids] of Object.entries(s.groups)) {
+          const left = ids.filter((m) => !members.includes(m));
+          if (left.length > 1) groups[g] = left;
+        }
+        groups[id] = members;
+        s.edit("Group", () => ({ groups }));
+        log(c, "ok", `✓ Grouped ${members.length} elements as ${id}`);
+      },
+    },
+    {
+      name: "UNGROUP",
+      title: "Ungroup",
+      desc: "Dissolve the selected group",
+      group: "Edit",
+      run: (c) => {
+        const s = wsState(c);
+        const hit = Object.entries(s.groups).filter(([, ids]) => ids.some((m) => s.selection.includes(m)));
+        if (!hit.length) return toast(c, "The selection is not part of a group", "warn");
+        const groups = { ...s.groups };
+        for (const [g] of hit) delete groups[g];
+        s.edit("Ungroup", () => ({ groups }));
+        log(c, "ok", `✓ Ungrouped ${hit.map(([g]) => g).join(", ")}`);
+      },
+    },
     { name: "LOCK", title: "Lock", desc: "Lock the selection against edits", group: "Edit", run: (c) => { const s = wsState(c); if (!s.selection.length) return toast(c, "Nothing selected", "warn"); s.setLocked(s.selection, true); log(c, "ok", `✓ Locked ${s.selection.length} element(s)`); } },
     { name: "UNLOCK", title: "Unlock", desc: "Unlock the selection", group: "Edit", run: (c) => { const s = wsState(c); s.setLocked(s.selection.length ? s.selection : s.locked, false); log(c, "ok", "✓ Unlocked"); } },
     { name: "PROPERTIES", title: "Properties", desc: "Open the Properties palette", group: "Edit", key: "Ctrl+1", aliases: ["PR"], run: (c) => openPanel(c, null, "properties") },
@@ -379,38 +678,101 @@ function buildCommands(): CommandDef[] {
   );
   /* MEP */
   add(
-    tool("HVAC", "HVAC", "Air handlers, ducts and diffusers", "Home", "Specify equipment location:"),
-    layerTool("ELEC", "Electrical", "Panels, circuits and devices (also toggles the layer)", "electrical", "Specify device location:"),
-    layerTool("PLUMB", "Plumbing", "Supply, waste and vent (also toggles the layer)", "plumbing", "Specify fixture location:"),
+    tool("HVAC", "HVAC", "Place HVAC equipment: an AC condenser, mini-split, air handler, diffuser or return grille", "Home", "Click where the unit goes:"),
+    layerTool("ELEC", "Electrical", "Place electrical devices: lights, switches, outlets, fans, detectors, the panel, an inverter … (also toggles the layer)", "electrical", "Click where the device goes:"),
+    layerTool("PLUMB", "Plumbing", "Place plumbing fixtures: sinks, faucets, toilets, tubs, showers, the water heater … (also toggles the layer)", "plumbing", "Click where the fixture goes:"),
     tool("DUCT", "Ducts", "Duct runs", "Home", "Specify duct start point:"),
     tool("PIPE", "Pipes", "Pipe runs", "Home", "Specify pipe start point:"),
-    tool("TRAY", "Cable trays", "Cable tray runs", "Home", "Specify tray start point:"),
-    tool("FIRE", "Fire protection", "Sprinklers and alarms", "Home", "Specify sprinkler head location:"),
-    tool("FIXT", "Fixtures", "Place fixtures", "Home", "Specify fixture location:"),
-    tool("EQUIP", "Equipment", "Place equipment", "Home", "Specify equipment location:"),
+    tool("TRAY", "Cable Trays", "Cable tray runs", "Home", "Specify tray start point:"),
+    tool("FIRE", "Fire Protection", "Sprinklers and alarms", "Home", "Specify sprinkler head location:"),
+    tool("FIXT", "Fixtures", "Place any MEP fixture of the catalogue: lights, switches, outlets, sinks, toilets, tubs, AC units …", "Home", "Click where the fixture goes:"),
+    tool("EQUIP", "Equipment", "Place equipment: the water heater, air handler, AC condenser, panel, inverter, battery or a generator", "Home", "Click where the equipment goes:"),
+    tool("WIRE", "Wire", "Wire electrical devices: click a switch (or a panel, an outlet), then each light, fan or outlet it feeds; the switch then controls them", "Home", "Click the switch, panel or outlet the wire starts at:", ["WIRING", "CONNECTWIRE"]),
+    tool("PIPECONNECT", "Pipe Connect", "Pipe plumbing fixtures: click the water heater (hot), the water supply (cold) or the drain stack (waste), then each fixture to connect", "Home", "Click the water heater, the water supply or the drain stack:", ["PCONNECT", "PLUMBTO", "CONNECTPIPE"]),
+    tool("SOLARPANEL", "Solar Panels", "A solar array: click a roof slope (it follows the roof) or the ground (racked); rows and panels in the tool bar", "Systems", "Click a roof slope or the ground:", ["SOLARPANELS", "PV", "SOLARARRAY"]),
+    ...PIECES.map(([name, title, desc, toolName, type, aliases]) => piece(name, title, desc, toolName, type, aliases)),
+    {
+      name: "PIPEVIEW",
+      title: "Pipes",
+      desc: "Show plumbing as the pipes themselves (cold blue, hot red, drains brown, at their real size) instead of dotted drawing lines",
+      group: "View",
+      aliases: ["PIPES", "PIPELOOK"],
+      run: (c) => {
+        const s = wsState(c);
+        const pipes = s.mepLook.plumbing !== "pipes";
+        s.patch({ mepLook: { ...s.mepLook, plumbing: pipes ? "pipes" : "lines" } });
+        if (pipes) s.toggleLayer("plumbing", true);
+        log(c, "ok", `✓ Plumbing drawn as ${pipes ? "pipes (cold blue, hot red, drain brown)" : "dotted lines"}`);
+      },
+    },
+    {
+      name: "WIREVIEW",
+      title: "Wires",
+      desc: "Show electrical as the cables themselves (yellow power, white switched legs) instead of dashed drawing lines",
+      group: "View",
+      aliases: ["WIRES", "WIRELOOK"],
+      run: (c) => {
+        const s = wsState(c);
+        const wires = s.mepLook.electrical !== "wires";
+        s.patch({ mepLook: { ...s.mepLook, electrical: wires ? "wires" : "lines" } });
+        if (wires) s.toggleLayer("electrical", true);
+        log(c, "ok", `✓ Electrical drawn as ${wires ? "wires (yellow power, white switched legs)" : "dashed lines"}`);
+      },
+    },
+    {
+      name: "SWITCHON",
+      title: "Turn Switch On / Off",
+      desc: "Turn the selected switches on or off: the lights they are wired to light up (or go dark) in 2D and 3D",
+      group: "Systems",
+      aliases: ["TOGGLESWITCH", "LIGHTSON"],
+      run: (c) => {
+        const s = wsState(c);
+        const switches = s.drawn.filter((i) => s.selection.includes(i.id) && i.kind === "fixture" && fixtureOf(String(i.p.type ?? ""))?.role === "switch");
+        if (!switches.length) return toast(c, "Select a switch first (click it in the plan or in 3D).", "warn");
+        const on = !switches.every((i) => i.p.on === true);
+        s.edit(on ? "Switch on" : "Switch off", (st) => ({ drawn: st.drawn.map((i) => (switches.some((w) => w.id === i.id) ? { ...i, p: { ...i.p, on } } : i)) }));
+        log(c, "ok", `✓ ${switches.map((i) => i.name).join(", ")} ${on ? "on: the lights they control are lit" : "off"}`);
+      },
+    },
   );
   /* Modify */
   add(
-    tool("MOVE", "Move", "Move the selection", "Home", "Specify base point:", ["M"], true),
-    tool("ROTATE", "Rotate", "Rotate the selection", "Home", "Specify base point:", ["RO"], true),
-    tool("SCALE", "Scale", "Scale the selection", "Home", "Specify base point:", ["SC"], true),
-    tool("MIRROR", "Mirror", "Mirror the selection", "Home", "Specify first point of mirror line:", ["MI"], true),
+    tool("MOVE", "Move", "Move the selection", "Home", "Specify base point:", ["M"]),
+    tool("ROTATE", "Rotate", "Rotate the selection", "Home", "Specify base point:", ["RO"]),
+    tool("SCALE", "Scale", "Scale the selection", "Home", "Specify base point:", ["SC"]),
+    tool("MIRROR", "Mirror", "Mirror the selection", "Home", "Specify first point of mirror line:", ["MI"]),
     tool("OFFSET", "Offset", "Offset curves or walls", "Home", "Specify offset distance:", ["O"]),
     tool("TRIM", "Trim", "Trim to a cutting edge", "Home", "Select cutting edges:", ["TR"]),
     tool("EXTEND", "Extend", "Extend to a boundary", "Home", "Select boundary edges:", ["EX"]),
     tool("FILLET", "Fillet", "Round a corner", "Home", "Select first object:"),
     tool("CHAMFER", "Chamfer", "Bevel a corner", "Home", "Select first line:"),
-    tool("ARRAY", "Array", "Repeat in a pattern", "Home", "Select objects:", undefined, true),
+    tool("ARRAY", "Array", "Repeat in a pattern", "Home", "Select objects:", undefined),
     tool("SPLIT", "Split", "Split an element in two", "Home", "Specify split point:"),
     tool("JOIN", "Join", "Join elements", "Home", "Select source object:"),
-    tool("ALIGN", "Align", "Align objects to others", "Home", "Specify first source point:", undefined, true),
-    tool("COPY", "Copy", "Copy the selection", "Home", "Specify base point:", ["CO"], true),
+    tool("ALIGN", "Align", "Align objects to others", "Home", "Specify first source point:", undefined),
+    tool("COPY", "Copy", "Copy the selection", "Home", "Specify base point:", ["CO"]),
   );
   /* Properties */
   add(
-    tool("CHTYPE", "Change Type", "Change the selected element's type", "Home", "Select element:", undefined, true),
-    tool("CHMAT", "Material", "Change the selected element's material", "Home", "Select element:", undefined, true),
-    tool("CHDIM", "Dimensions", "Edit the selected element's dimensions", "Home", "Select element:", undefined, true),
+    tool("CHTYPE", "Change Type", "Change the selected element's type", "Home", "Select element:", undefined),
+    tool("CHMAT", "Material", "Change the selected element's material", "Home", "Select element:", undefined),
+    {
+      name: "ROTATE90",
+      title: "Turn 90° Clockwise",
+      desc: "Turn the selected objects a quarter turn clockwise about their centre; while placing a piece, turn the piece",
+      group: "Home",
+      aliases: ["TURNRIGHT", "ROTATERIGHT", "TURN"],
+      run: (c) => quarterTurn(c, true),
+    },
+    {
+      name: "ROTATE90CCW",
+      title: "Turn 90° Counter-Clockwise",
+      desc: "Turn the selected objects a quarter turn counter-clockwise about their centre; while placing a piece, turn the piece",
+      group: "Home",
+      aliases: ["TURNLEFT", "ROTATELEFT"],
+      run: (c) => quarterTurn(c, false),
+    },
+    tool("CHDIM", "Dimensions", "Edit the selected element's dimensions", "Home", "Select element:", undefined),
     tool("ATTACH HOST", "Attach", "Host an element to another", "Home", "Select element to attach:"),
     tool("DETACH", "Detach", "Unhost an element", "Home", "Select element to detach:"),
   );
@@ -428,7 +790,7 @@ function buildCommands(): CommandDef[] {
       },
     },
     { name: "ISOLATE", title: "Isolate", desc: "Isolate the selection", group: "Home", run: (c) => { const s = wsState(c); if (!s.selection.length) return toast(c, "Select something to isolate", "warn"); s.isolate(s.selection); log(c, "ok", `✓ Isolated ${s.selection.length} element(s)`); } },
-    { name: "LAYLCK", title: "Lock Layer", desc: "Lock the layer of the selection", group: "Home", run: (c) => { const s = wsState(c); const scene = getScene(s.project.sceneKind); const el = scene.elementById[s.selection[0]]; if (!el) return toast(c, "Select an element to lock its layer", "warn"); s.toggleLayerLock(el.layer); log(c, "ok", `✓ Layer ${el.layer} lock toggled`); } },
+    { name: "LAYLCK", title: "Lock Layer", desc: "Lock the layer of the selection", group: "Home", run: (c) => { const s = wsState(c); const scene = sceneOf(s); const el = scene.elementById[s.selection[0]]; if (!el) return toast(c, "Select an element to lock its layer", "warn"); s.toggleLayerLock(el.layer); log(c, "ok", `✓ Layer ${el.layer} lock toggled`); } },
     { name: "UNHIDE", title: "Show All", desc: "Show every hidden element", group: "View", aliases: ["UNISOLATE"], run: (c) => { wsState(c).showAll(); log(c, "ok", "✓ All elements visible"); } },
     { name: "HIDE", title: "Hide", desc: "Hide the selection", group: "View", run: (c) => { const s = wsState(c); if (!s.selection.length) return toast(c, "Select something to hide", "warn"); s.setHidden(s.selection, true); log(c, "ok", `✓ Hid ${s.selection.length} element(s)`); s.clearSelection(); } },
   );
@@ -449,10 +811,61 @@ function buildCommands(): CommandDef[] {
     modal("IMPORT", "Survey / LandXML", "Civil 3D surface and survey points", "Insert", "import", { kind: "landxml" }),
     modal("DRONE", "Drone", "DroneDeploy orthomosaic or point cloud", "Insert", "import", { kind: "drone" }),
     modal("PDFATTACH", "PDF / Image", "Underlay to trace", "Insert", "import", { kind: "pdf" }),
-    modal("GEOLOCATE", "Place on Map", "Google Maps location and 3D terrain", "Insert", "geolocate"),
+    showPanel("GEOLOCATE", "Site Location", "Where the site is: coordinates, the property line, Google Maps and the land around it", "Insert", null, "site", ["SITELOCATION", "MAP"]),
+    {
+      name: "SITEFROMMAP",
+      title: "Site from Map",
+      desc: "From the site's coordinates: the ground's contours from public elevation data and the satellite photo under the plan, then the site plan",
+      group: "Insert",
+      aliases: ["SITEPLANFROMMAP", "TOPOFROMMAP", "GROUNDFROMMAP"],
+      run: async (c) => {
+        const s = wsState(c);
+        const site = s.project.site;
+        if (!isPlaced(site)) {
+          openPanel(c, null, "site");
+          return toast(c, "Place the site on the map first (Site palette → Location): the ground and the photo come from its coordinates.", "warn");
+        }
+        const scene = sceneOf(s);
+        const f = scene.footprint;
+        const area = areaAround(site, f, 100);
+        log(c, "info", "Site from Map: reading public elevation data around the lot…");
+        try {
+          const r = await groundFromMap(site, area, [(f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2], scene.grade, 1);
+          const photo = aerialItem(site, area, scene.grade, uid("U"));
+          const old = s.drawn.filter((d) => d.kind === "image" && typeof d.p.tiles === "string").map((d) => d.id);
+          wsState(c).edit("Site from the map", (st) => ({ ...applyChange(st, photo ? { remove: old, add: [photo] } : {}), project: { ...st.project, terrain: r.terrain } }));
+          log(c, "ok", `✓ Site from the map: ${r.terrain.contours.length} contours (1 ft), ground about ${Math.round(r.seaLevel)} ft above sea level at the building${photo ? ", the satellite photo under the plan" : ""}. Approximate public data: not a survey.`);
+          openView(wsState(c), { kind: "site" });
+        } catch {
+          toast(c, "Couldn't read the public elevation data. This needs an internet connection.", "warn");
+        }
+      },
+    },
+    tool("PROPLINE", "Property Line", "Draw the property line: click the corners, or type a bearing and distance for each course (N45°30'E 120)", "Insert", "Specify the first corner of the property line:", ["BOUNDARY"]),
     modal("TERRAIN", "Terrain / Topography", "Contours and grading surface", "Insert", "import", { kind: "terrain" }),
     modal("SOIL", "Soil Data", "Attach a soil test report", "Insert", "import", { kind: "soil" }),
-    modal("XREF", "Xref", "Link another BuildSync project", "Insert", "import", { kind: "xref" }),
+    {
+      name: "GROUND",
+      title: "Ground Type",
+      desc: "Choose the kind of ground: lawn, dirt, clay, loam, sand, gravel or rock. It changes how the ground looks in 3D and on the sheets, and the presumptive soil values the checks use. GROUND CLAY sets it at once",
+      group: "Insert",
+      aliases: ["GROUNDTYPE", "SOILTYPE", "TERRAINTYPE"],
+      run: (c, args) => {
+        const typed = args.join(" ").trim();
+        if (!typed) {
+          openPanel(c, null, "site");
+          log(c, "info", `Ground: ${groundOf(wsState(c).project).label}. Pick another in the Site palette, or type GROUND and one of: ${GROUND_TYPES.join(", ")}`);
+          return;
+        }
+        const g = parseGround(typed);
+        if (!g) return toast(c, `"${typed}" is not a ground type. Use one of: ${GROUND_TYPES.join(", ")}.`, "warn");
+        setGround(c.ws, g);
+        log(c, "ok", `✓ Ground: ${GROUNDS[g].label}: presumptive bearing ${GROUNDS[g].bearing.toLocaleString("en-US")} psf; ${GROUNDS[g].septic}`);
+      },
+    },
+    modal("XREF", "Link Project", "Bring another project onto this parcel: keep it separate (a live link that updates when it is saved) or merge an editable copy", "Insert", "link-project", undefined, ["LINK", "LINKPROJECT"]),
+    modal("COMMUNITY", "New Community", "A new project with several projects side by side on one parcel, linked or merged", "Insert", "link-project", { community: true }, ["NEWCOMMUNITY", "PARCEL"]),
+    showPanel("LINKS", "Linked Projects", "The projects linked or merged into this one: move, turn, open, merge or unlink them", "Insert", null, "links", ["XREFS"]),
     {
       name: "MATERIAL",
       title: "Materials",
@@ -465,17 +878,44 @@ function buildCommands(): CommandDef[] {
     },
     ...(["FURN", "FIXT LIB", "MEPLIB", "STRLIB"] as const).map(
       (n): CommandDef => ({
-        name: n,
-        title: { FURN: "Furniture", "FIXT LIB": "Fixtures (library)", MEPLIB: "MEP parts", STRLIB: "Structural parts" }[n],
-        desc: "Insert from the component library",
+        name: (TOOL_COMMANDS.add(n), n),
+        title: { FURN: "Furniture", "FIXT LIB": "Fixtures (Library)", MEPLIB: "MEP Parts", STRLIB: "Structural Parts" }[n],
+        desc:
+          n === "FURN"
+            ? "Place furniture in the 2D plan or the 3D view: sofas, beds, tables and chairs, kitchen and laundry appliances, office and outdoor pieces (FURN BED-QUEEN picks one; R turns it)"
+            : "Insert from the component library",
         group: "Insert",
-        run: (c) => {
+        run: (c, args) => {
+          // FURN <piece>: place that piece of the catalogue
+          if (n === "FURN" && args.length) {
+            const pc = pieceOf(args.join("-").toLowerCase());
+            if (!pc) return toast(c, `No piece of furniture called "${args.join(" ")}". The Library tab lists them all.`, "warn");
+            const s = wsState(c);
+            s.patch({ toolOpts: { ...s.toolOpts, FURN: { ...(s.toolOpts.FURN ?? {}), type: pc.id } } });
+          }
+          // opens the library (to drag components from) and starts placing the chosen kind with a click
           wsState(c).setExplorer("library");
-          log(c, "ok", "✓ Component library opened. Drag a component into the viewport.");
+          if (!beginTool(c, n)) log(c, "ok", "✓ Component library opened. Drag a component into the viewport.");
         },
       }),
     ),
     tool("IMAGE", "Image", "Place an image on the drawing", "Insert", "Specify insertion point:"),
+    tool("SHED", "Shed", "A shed or outbuilding: type its width, depth, height and roof, then click (or type x,y) to place it", "Insert", "Click where the shed goes:", ["OUTBUILDING"]),
+    tool("TREE", "Tree", "A shade tree, palm or pine with its height and canopy", "Insert", "Click where the tree goes:"),
+    tool("BUSH", "Bush", "A bush or shrub with its height and spread", "Insert", "Click where the bush goes:", ["SHRUB"]),
+    tool("FLOWERS", "Flower Bed", "Outline a flower bed (or R for a rectangle): mulch filled with flowering plants in the colours you pick", "Insert", "Outline the flower bed:", ["FLOWERBED", "PLANTING"]),
+    tool("POOL", "Pool", "A swimming pool: rectangle, oval, freeform or L-shape, with its length, width, depth and the deck around it; click where it goes", "Insert", "Click where the pool goes:", ["SWIMMINGPOOL"]),
+    tool("FENCE", "Fence / Garden Wall", "Draw a fence or a garden wall by its line (C closes it round a yard): wood privacy, picket, chain link, wrought iron, vinyl or masonry, and its height", "Insert", "Specify the start of the fence:", ["GARDENWALL", "SITEWALL", "FENCES"]),
+    tool("ROCK", "Boulders", "A landscape boulder or a cluster of them: size and how many in the tool bar, then click", "Insert", "Click where the boulder goes:", ["BOULDER", "ROCKS"]),
+    tool("GRAVEL", "Gravel Bed", "Outline a bed of gravel or river rock", "Insert", "Outline the gravel bed:", ["ROCKBED", "RIVERROCK"]),
+    tool("ROAD", "Road", "Draw a road by its centre line: pavement width, curb and gutter, sidewalks and the centre line in the tool bar", "Systems", "Specify the start of the road's centre line:", ["STREET"]),
+    tool("SIDEWALK", "Sidewalk", "Draw a concrete sidewalk by its line, with control joints every 5 ft", "Systems", "Specify the start of the sidewalk:", ["WALKWAY"]),
+    tool("SIGN", "Road Sign", "A road sign on its post: stop, yield, speed limit, street names, no parking, one way", "Systems", "Click where the sign goes:", ["ROADSIGN", "STOPSIGN"]),
+    tool("SIGNAL", "Traffic Light", "A traffic light on a mast arm over the road, with red, amber and green lamps", "Systems", "Click where the traffic light's pole goes:", ["STOPLIGHT", "TRAFFICLIGHT"]),
+    tool("DRAIN", "Drain", "A storm drain: a curb inlet with its catch basin, an area drain in the yard, or a trench drain across a driveway", "Systems", "Click where the drain goes:", ["STORMDRAIN", "INLET"]),
+    tool("GUTTER", "Gutters", "Click a roof: gutters along its eaves, with downspouts and splash blocks at the ends", "Systems", "Click a roof:", ["GUTTERS", "DOWNSPOUT"]),
+    tool("SEPTIC", "Septic Tank", "A septic tank with its drain field: tank size, trenches and distance from the tool bar", "Insert", "Click where the septic tank goes:", ["SEPTICTANK"]),
+    modal("PLACE", "Place by Measurement", "Put a shed, pool, tree, bush, boulder, flower bed, septic tank, slab or box on the plan by typing its size and its distance from the building", "Insert", "place", undefined, ["PLACEBYMEASURE", "MEASUREPLACE"]),
     tool("TEXT", "Text", "Place text on the drawing", "Insert", "Specify first corner of text box:"),
     tool("NOTE", "Annotation", "Place a note on the drawing", "Insert", "Specify note location:"),
   );
@@ -486,7 +926,134 @@ function buildCommands(): CommandDef[] {
     tool("LEADER", "Leader", "Callout with a leader line", "Annotate", "Specify leader start point:"),
     tool("TAG", "Tag", "Label elements", "Annotate", "Select element to tag:"),
     tool("SECTIONLINE", "Section", "Section reference mark", "Annotate", "Specify section line start:"),
-    tool("ELEVMARK", "Elevation", "Elevation reference mark", "Annotate", "Specify elevation mark point:"),
+    tool("ELEVMARK", "Spot Elevation", "Elevation reference mark", "Annotate", "Specify elevation mark point:"),
+    tool("LABEL", "Place Label", "Name a place (Kitchen, Parking, Main Entrance): shown on the plan and floating in the 3D view", "Annotate", "Click the place to name:", ["PLACELABEL"]),
+    {
+      name: "LABELS",
+      title: "Labels",
+      desc: "Show or hide place labels and the property line's bearings in the 2D plan and the 3D view (room names have their own switch: ROOMLABELS)",
+      group: "View",
+      run: (c) => {
+        const s = wsState(c);
+        s.patch({ labels: !s.labels });
+        log(c, "ok", `✓ Labels ${onOff(!s.labels)}`);
+      },
+    },
+    {
+      name: "FURNLABELS",
+      title: "Furniture Names",
+      desc: "Show or hide the name of each piece of furniture, in the 2D plan and in 3D",
+      group: "View",
+      aliases: ["FURNITURENAMES", "FURNNAMES", "FURNITURELABELS"],
+      run: (c) => {
+        const s = wsState(c);
+        s.patch({ furnLabels: !s.furnLabels });
+        log(c, "ok", `✓ Furniture names ${onOff(!s.furnLabels)}`);
+      },
+    },
+    {
+      name: "ROOMLABELS",
+      title: "Room Names",
+      desc: "Show or hide room names and areas in the 2D plan, in 3D and on plan sheets",
+      group: "View",
+      aliases: ["ROOMNAMES", "RMLABELS", "ROOMTAGS"],
+      run: (c) => {
+        const s = wsState(c);
+        s.patch({ roomLabels: !s.roomLabels });
+        log(c, "ok", `✓ Room names ${onOff(!s.roomLabels)}`);
+      },
+    },
+    {
+      name: "VIEWTOPO",
+      title: "Topography",
+      desc: "The site's contours shaded by height, with spot grades, on its own sheet",
+      group: "View",
+      aliases: ["TOPO", "TOPOGRAPHY"],
+      run: (c) => log(c, "ok", `✓ ${openView(wsState(c), { kind: "topo" })} opened. The Model tab brings you back.`),
+    },
+    {
+      name: "CUTAWAY",
+      title: "Cutaway",
+      desc: "Cut the 3D model 4 ft above the floor of the level you are on, like a dollhouse, so the rooms and furniture show from above",
+      group: "View",
+      aliases: ["DOLLHOUSE", "ROOMSVIEW"],
+      run: (c) => {
+        const s = wsState(c);
+        const on = !s.cutaway;
+        s.patch({ cutaway: on, ...(on && s.view === "2d" && s.layoutTab === "model" ? { view: "3d" as const } : {}) });
+        log(c, "ok", `✓ Cutaway ${onOff(on)}${on ? `: the model is cut 4 ft above ${levelLabel(s.plan.level)}` : ""}`);
+      },
+    },
+    {
+      name: "BELOWGRADE",
+      title: "Below Grade",
+      desc: "See the foundation in 3D: the ground turns see-through and the house above it fades, so the footings, stem walls, slab, piers, the septic tank and buried pipes show",
+      group: "View",
+      aliases: ["FOUNDATIONVIEW", "UNDERGROUND"],
+      run: (c) => {
+        const s = wsState(c);
+        const on = !s.belowGrade;
+        s.patch({ belowGrade: on, ...(on && s.view === "2d" && s.layoutTab === "model" ? { view: "3d" as const } : {}) });
+        log(c, "ok", `✓ Below grade ${onOff(on)}${on ? ": the ground is see-through and the house above it faded, so the foundation and the septic system show" : ""}`);
+      },
+    },
+    {
+      name: "FOUNDATIONPLAN",
+      title: "Foundation Plan",
+      desc: "The plan of the foundation: stem walls, slab and piers, with the footings and the septic system dashed below ground",
+      group: "View",
+      aliases: ["FPLAN"],
+      run: (c) => log(c, "ok", `✓ ${openView(wsState(c), { kind: "plan", level: "foundation" })} plan opened`),
+    },
+    {
+      name: "VIEWPLANS",
+      title: "All Levels",
+      desc: "Every storey's floor plan side by side on one sheet",
+      group: "View",
+      aliases: ["ALLPLANS", "ALLLEVELS"],
+      run: (c) => log(c, "ok", `✓ ${openView(wsState(c), { kind: "plans" })} opened. The Model tab brings you back.`),
+    },
+    {
+      name: "UNDERLAY",
+      title: "Underlay",
+      desc: "Show other levels faded under the 2D plan: the level below, then every level, then none",
+      group: "View",
+      run: (c) => {
+        const s = wsState(c);
+        const next = s.planShow === "level" ? "below" : s.planShow === "below" ? "all" : "level";
+        s.patch({ planShow: next });
+        if (s.view !== "2d") s.setView("2d");
+        log(c, "ok", `✓ Underlay: ${next === "level" ? "off" : next === "below" ? "the level below" : "all levels"}`);
+      },
+    },
+    {
+      name: "VIEWS",
+      title: "Views",
+      desc: "The list of drawings: floor plans, site, topography, elevations, sections and sheets",
+      group: "View",
+      aliases: ["BROWSER", "PROJECTBROWSER"],
+      run: (c) => {
+        wsState(c).setExplorer("views");
+        log(c, "ok", "✓ Views opened in the Model Explorer");
+      },
+    },
+    tool("VIEWELEV", "Elevation View", "Place two points at any angle (or a centre and radius for a circular elevation, or pick a drawn line) and the elevation opens on its own sheet; drag the points or type an angle or radius to adjust it", "View", "Specify the first point of the elevation line:", ["ELEVATION"]),
+    tool("VIEWSECTION", "Section View", "Draw a cut line and see the building section on its own sheet", "View", "Specify the start of the section line:", ["SECTIONVIEW"]),
+    {
+      name: "VIEWSITE",
+      title: "Site Plan",
+      desc: "Top view of the site and its topography contours on its own sheet",
+      group: "View",
+      aliases: ["SITEPLAN"],
+      run: (c) => {
+        const s = wsState(c);
+        let n = 1;
+        while (s.sheets.some((x) => x.id === `SP-${n}`)) n++;
+        const id = `SP-${n}`;
+        s.edit("Site plan", (st) => applyChange(st, { addSheets: [{ id, name: `${id} Site Plan`, kind: "site", view: { dir: "S", title: "SITE PLAN · TOPOGRAPHY" }, user: true }], openSheet: id }));
+        log(c, "ok", `✓ ${id} Site Plan opened. The Model tab brings you back.`);
+      },
+    },
     tool("DETAIL", "Detail", "Detail callout", "Annotate", "Specify detail boundary:"),
     tool("GRIDLINE", "Grid", "Structural grid line", "Annotate", "Specify grid line start:"),
     modal("SCHEDULE", "Door/Window Schedule", "Generated tables from the model", "Annotate", "schedule"),
@@ -497,7 +1064,7 @@ function buildCommands(): CommandDef[] {
   add(
     showPanel("STRESS", "Stress Test", "Stress Test palette with heat overlay", "Analyze", "analyze", "stress-test", ["ST"], (c) => wsState(c).patch({ stressOverlay: !!wsState(c).stressResult })),
     showPanel("STRUCT", "Structural", "Full structural analysis", "Analyze", "analyze", "stress-test", undefined, (c) => wsState(c).setStressSetup({ elementId: "all" })),
-    showPanel("LOADS", "Load cases", "Load cases and combinations", "Analyze", "analyze", "stress-test", undefined, (c) => wsState(c).setStressSetup({ loadCase: "combined" })),
+    showPanel("LOADS", "Load Cases", "Load cases and combinations", "Analyze", "analyze", "stress-test", undefined, (c) => wsState(c).setStressSetup({ loadCase: "combined" })),
     showPanel("DEFLECT", "Deflection", "Span deflection limits", "Analyze", "analyze", "stress-test", undefined, (c) => wsState(c).setStressSetup({ loadCase: "dead-live" })),
     ...(
       [
@@ -524,8 +1091,21 @@ function buildCommands(): CommandDef[] {
         }
       },
     },
-    report("GRADING", "Grading", "Cut and fill against site contours", "Analyze", ["Cut 412 cy · Fill 365 cy · Net export 47 cy", "Max slope 4.2% away from the foundation (min 2%: pass)"]),
-    report("TRAFFIC", "Traffic Radius", "Traffic within a 10 mi radius", "Analyze", ["10 mi radius: 3 arterials, peak 1,840 veh/hr on SW 27th Ave", "Site access level of service: B. No turn lane required."]),
+    computed("GRADING", "Grading", "Earthwork from the model and the ground: cut and fill for the building pad, excavation, and the fall away from the foundation", (c) => gradingReport(sceneOf(wsState(c)))),
+    {
+      name: "TRAFFIC",
+      title: "Traffic Radius",
+      desc: "The road network within 10 miles of the site on the street map, to judge access and traffic",
+      group: "Analyze",
+      run: (c) => {
+        const s = wsState(c);
+        s.patch({ mapView: { radius: 10, base: "streets" } });
+        openPanel(c, "analyze", "site");
+        if (!isPlaced(s.project.site)) return toast(c, "Place the site on the map first (Site palette → Location).", "warn");
+        log(c, "ok", "✓ Traffic radius: the street map of the 10 mile radius around the site is in the Site palette");
+        log(c, "info", "  Traffic counts come from the state DOT (AADT counts): the map shows the roads and how the site connects to them.");
+      },
+    },
     showPanel("CLASH", "Clash Detect", "Open the Clash palette", "Analyze", "analyze", "clash"),
     {
       name: "CODECHECK",
@@ -540,8 +1120,8 @@ function buildCommands(): CommandDef[] {
         log(c, "ok", `✓ Code check against ${s.project.jurisdiction.name} · ${s.project.jurisdiction.codeSet}: ${n} rules`);
       },
     },
-    report("MATCHECK", "Material Analysis", "Material suitability for climate and soil", "Analyze", ["Galvanized rebar recommended at stem walls (chloride exposure, coastal)", "Concrete mix: 4000 psi with 25% fly ash meets HVHZ durability class XS1"]),
-    report("CONSTRUCT", "Constructability", "Sequencing and access review", "Analyze", ["Crane reach covers the full footprint from the south drive", "Pour Level 2 slab and beams in one phase to save a mobilisation"]),
+    computed("MATCHECK", "Material Analysis", "Material quantities from the model and what the site's climate and soil ask of them", (c) => materialReport(sceneOf(wsState(c)), wsState(c).project)),
+    computed("CONSTRUCT", "Constructability", "Pours, counts, pump and crane reach, staging room and the build sequence, from the model", (c) => constructabilityReport(sceneOf(wsState(c)), wsState(c).project)),
     showPanel("COST", "Cost", "Open the Cost palette", "Analyze", "analyze", "cost"),
     showPanel("HEALTH", "Plan Health", "Open the Plan Health Score palette", "Analyze", "analyze", "health"),
     {
@@ -649,8 +1229,62 @@ function buildCommands(): CommandDef[] {
     { name: "PLAN", title: "2D Plan", desc: "Switch the viewport to the 2D plan", group: "View", aliases: ["2D"], run: (c) => { wsState(c).setView("2d"); wsState(c).setLayoutTab("model"); log(c, "ok", "✓ 2D plan"); } },
     { name: "3DVIEW", title: "3D View", desc: "Switch the viewport to 3D", group: "View", aliases: ["3D"], run: (c) => { wsState(c).setView("3d"); wsState(c).setLayoutTab("model"); log(c, "ok", "✓ 3D view"); } },
     { name: "3DORBIT", title: "Orbit", desc: "Drag to orbit the model", group: "View", run: (c) => { wsState(c).setView("3d"); wsState(c).setNavTool("orbit"); log(c, "info", "3DORBIT  Drag in the viewport to orbit."); } },
-    { name: "3DWALK", title: "Walk", desc: "Walk through the model", group: "View", run: (c) => { const s = wsState(c); s.setView("3d"); s.setNavTool("walk"); s.setCamera({ pitch: 12, perspective: true, zoom: 1.6 }); log(c, "info", "3DWALK  Drag to look around, scroll to move."); } },
-    { name: "ZOOM", title: "Zoom Extents", desc: "Fit the model to the window", group: "View", aliases: ["ZE", "ZOOME"], run: (c) => { wsState(c).zoomExtents(); log(c, "ok", "✓ Zoom extents"); } },
+    {
+      name: "3DWALK",
+      title: "Walk",
+      desc: "Walk through the model at eye height: you stand in a room and look around it (drag); double-click another room's name to go there",
+      group: "View",
+      run: (c) => {
+        const s = wsState(c);
+        const rooms = roomsOn(sceneOf(s), s.plan.level);
+        if (!s.insideRoom && rooms.length) return void enterRoom(c, rooms[0].id);
+        // no rooms on this storey: walk in perspective at eye level around the model
+        s.setView("3d");
+        s.setNavTool("walk");
+        if (!s.insideRoom) s.setCamera({ pitch: 12, perspective: true, zoom: 1.6 });
+        log(c, "info", "3DWALK  Drag to look around, scroll to move.");
+      },
+    },
+    {
+      name: "WALKIN",
+      title: "Inside a Room",
+      desc: "Room to Room view: stand inside a room at eye height and look around it, up and down (drag); go from room to room, and building to building, like Street View",
+      group: "View",
+      aliases: ["INSIDE", "ROOMVIEW", "ENTERROOM", "ROOMTOROOM"],
+      run: (c, args) => {
+        const s = wsState(c);
+        const scene = sceneOf(s);
+        const q = args.join(" ").trim().toLowerCase();
+        // a name matches a room, or "<building> <room>" (a community has several buildings with a kitchen each)
+        const named = (r: (typeof scene.rooms)[number]) => [r.name, `${r.building?.name ?? s.project.name} ${r.name}`].map((n) => n.toLowerCase());
+        const room = q ? (scene.rooms.find((r) => named(r).includes(q)) ?? scene.rooms.find((r) => named(r).some((n) => n.includes(q)))) : (scene.rooms.find((r) => r.id === s.insideRoom) ?? roomsOn(scene, s.plan.level)[0] ?? scene.rooms[0]);
+        if (!room) return toast(c, q ? `No room called "${args.join(" ")}". Room names: ${scene.rooms.map((r) => r.name).join(", ")}.` : "This project has no rooms yet: name them with ROOM (Home → Building).", "warn");
+        enterRoom(c, room.id);
+      },
+    },
+    { name: "NEXTROOM", title: "Next Room", desc: "In the room view: go to the next room of the storey", group: "View", run: (c) => stepRoom(c, 1) },
+    { name: "PREVROOM", title: "Previous Room", desc: "In the room view: go back to the previous room of the storey", group: "View", run: (c) => stepRoom(c, -1) },
+    {
+      name: "LEAVEROOM",
+      title: "Leave the Room",
+      desc: "Step out of the room view back to the 3D view you were in before",
+      group: "View",
+      aliases: ["EXITROOM", "OUTSIDE"],
+      run: (c) => {
+        const s = wsState(c);
+        if (!s.insideRoom && !s.camera.eye) return log(c, "info", "You are not inside a room.");
+        s.patch({ camera: { ...(s.outsideCamera ?? HOME_CAMERA), eye: null }, insideRoom: null, outsideCamera: null, navTool: s.navTool === "walk" ? "select" : s.navTool });
+        log(c, "ok", "✓ Back outside");
+      },
+    },
+    { name: "ZOOM", title: "Zoom Extents", desc: "Fit the model to the window", group: "View", aliases: ["ZE", "ZOOME"], run: (c) => {
+        const s = wsState(c);
+        s.zoomExtents();
+        // frame everything that is shown except the ground itself: the building, site objects, linked projects
+        const vis = new Set(s.project.layers.filter((l) => l.visible).map((l) => l.id));
+        s.frameElements(sceneOf(s).elements.filter((e) => e.layer !== "topography" && vis.has(e.layer) && !s.hidden.includes(e.id)).map((e) => e.id));
+        log(c, "ok", "✓ Zoom extents");
+      } },
     {
       name: "-VIEW",
       title: "Named Views",
@@ -730,6 +1364,7 @@ function buildCommands(): CommandDef[] {
     { name: "CMDLINE", title: "Command Line", desc: "Show or hide the command line", group: "View", key: "Ctrl+9", run: (c) => { wsState(c).toggleDock("cmdline"); } },
     { name: "POLAR", title: "Polar Tracking", desc: "Toggle polar tracking", group: "View", key: "F10", run: (c) => flip(c, "polar", "POLAR") },
     { name: "OSNAP", title: "Object Snap", desc: "Toggle object snap", group: "View", key: "F3", run: (c) => flip(c, "osnap", "OSNAP") },
+    { name: "OTRACK", title: "Object Snap Tracking", desc: "Line up with snap points the cursor rested on (horizontal and vertical guides)", group: "View", run: (c) => flip(c, "otrack", "OTRACK") },
     { name: "3DOSNAP", title: "3D Object Snap", desc: "Toggle 3D object snap", group: "View", key: "F4", run: (c) => flip(c, "osnap3d", "3DOSNAP") },
     { name: "DYN", title: "Dynamic Input", desc: "Toggle dynamic input", group: "View", key: "F12", run: (c) => flip(c, "dyn", "DYN") },
     { name: "LWT", title: "Lineweight", desc: "Toggle lineweight display", group: "View", run: (c) => flip(c, "lwt", "LWT") },
@@ -757,7 +1392,21 @@ function buildCommands(): CommandDef[] {
       group: "Manage",
       run: (c) => wsState(c).openModal("project-info", { tab: "standards" }),
     },
-    { name: "SHORTCUTS", title: "Keyboard Shortcuts", desc: "Show the shortcut cheat sheet", group: "Manage", key: "Ctrl+/", run: (c) => c.router.push("/settings/shortcuts") },
+    { name: "SHORTCUTS", title: "Keyboard Shortcuts", desc: "Every keyboard shortcut and command alias (Settings → Shortcuts)", group: "Help", key: "Ctrl+/", run: (c) => c.router.push("/settings/shortcuts") },
+    {
+      name: "TUTORIAL",
+      title: "Tutorial",
+      desc: "A guided tour of the screen: what every area and every ribbon tab is for",
+      group: "Help",
+      aliases: ["TOUR", "HELP"],
+      key: "F1",
+      run: (c) => {
+        wsState(c).closeModal();
+        c.app.getState().startTour(0);
+      },
+    },
+    modal("BUTTONGUIDE", "Button Guide", "Every button by tab: how it looks, what it does and where it is", "Help", "button-guide", undefined, ["GUIDE", "BUTTONS"]),
+    modal("INTERFACES", "Interfaces", "Save and switch window arrangements: which windows show, their size, side and tabs", "View", "interfaces", undefined, ["INTERFACE", "WORKSPACES", "UI"]),
     {
       name: "JURISDICTION",
       title: "Change Jurisdiction",
@@ -850,12 +1499,21 @@ export async function runInput(c: CommandCtx, raw: string): Promise<void> {
   if (!text) return;
   const app = c.app.getState();
   app.log("cmd", `› ${text}`);
+  // a running drawing tool takes typed points, distances and keywords (C, U, R …) before anything else
+  if (wsState(c).session && toolText(c, text)) return;
   const resolved = resolveCommand(text, app.settings.shortcuts.aliases);
   if (resolved) {
     await resolved.def.run(c, resolved.args);
     return;
   }
   await askAgent(c, text);
+}
+
+/** Enter in the command line or viewport: finish the object the running tool is drawing. */
+export function enterTool(c: CommandCtx): boolean {
+  if (!wsState(c).session) return false;
+  toolEnter(c);
+  return true;
 }
 
 /** Run a command by exact name or "NAME ARG" string (ribbon buttons, menus). */

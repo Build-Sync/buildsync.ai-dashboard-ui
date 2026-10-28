@@ -3,23 +3,26 @@
  *
  * WHAT   Small hooks shared by the workspace components: useCommandCtx (the context every command receives:
  *        workspace store, app store, router), useRunner (run(command) for buttons and menus, submit(text) for
- *        the command line), useScene (the geometry of the open project) and useEffectiveStyle (the visual
+ *        the command line), useScene (the geometry of the open project: the built-in model plus everything the
+ *        user drew and moved) and useEffectiveStyle (the visual
  *        style: the project's override, else the setting).
  * FOR    Ribbon buttons, menus, the command line, the viewport and the status bar all go through useRunner, so
  *        every action resolves through the same command registry (lib/commands.ts).
  * DEBUG  - A button does nothing: confirm it calls run("COMMAND") with a name that exists in lib/commands.ts
  *          (unknown names log "Unknown command" in the command line).
- *        - Wrong scene: useScene keys the cached scene by project.sceneKind (lib/scene/index.ts).
+ *        - Wrong scene: useScene composes getScene(project.sceneKind) with the store's `drawn` and `xf`
+ *          (lib/draw/compose.ts); an edit must replace those arrays for the scene to update.
  *
  * Author: Giordano Bertin-Maurice
  * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
  */
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { runCommand, runInput, type CommandCtx } from "@/lib/commands";
-import { getScene } from "@/lib/scene";
+import { sceneOf } from "@/lib/draw/scene-of";
+import { linkRevision } from "@/lib/links";
 import type { Scene } from "@/lib/scene";
 import { useAppApi, useApp } from "@/lib/store/app-provider";
 import { useWs, useWsApi } from "@/lib/store/workspace-provider";
@@ -46,10 +49,18 @@ export function useRunner() {
   );
 }
 
-/** The scene geometry for the open project (cached per scene kind). */
+/** The scene for the open project: the built-in model plus everything the user drew and moved (lib/draw/compose.ts), merged copies and linked projects (lib/links.ts). */
 export function useScene(): Scene {
   const kind = useWs((s) => s.project.sceneKind);
-  return useMemo(() => getScene(kind), [kind]);
+  const drawn = useWs((s) => s.drawn);
+  const xf = useWs((s) => s.xf);
+  const links = useWs((s) => s.project.links);
+  const merged = useWs((s) => s.project.merged);
+  const terrain = useWs((s) => s.project.terrain);
+  const mode = useWs((s) => s.mode);
+  // a linked project saved in this tab or another one redraws here
+  const rev = useSyncExternalStore(linkRevision.subscribe, linkRevision.get, () => 0);
+  return useMemo(() => sceneOf({ project: { sceneKind: kind, links, merged, terrain }, drawn, xf, mode, rev }), [kind, drawn, xf, links, merged, terrain, mode, rev]);
 }
 
 /** The visual style in force: the per-project override if set, else Settings → Rendering. */

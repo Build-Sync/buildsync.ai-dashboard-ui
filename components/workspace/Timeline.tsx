@@ -1,8 +1,10 @@
 /**
  * components/workspace/Timeline.tsx
  *
- * WHAT   The collapsible timeline dock above the command line: a phase tracker, a Gantt chart by day, week or
- *        month, a time-window query (1, 3, 6 months, Full or a custom day range) and a time-lapse player.
+ * WHAT   The timeline dock under the canvas (header only, normal or large through its eye; its top edge drags to
+ *        any height, double-click resets): a phase tracker, a Gantt chart by day, week or month, a time-window query
+ *        (1, 3, 6 months, Full or a custom day range) and a time-lapse player. The grip moves it above or below the
+ *        command line; × hides it.
  * FOR    The 4D schedule view. The chosen window filters the viewport, the Cost palette, the materials used and
  *        the crew on site. The schedule is derived from the project by buildSchedule in lib/timeline.ts.
  * DEBUG  - The time-lapse does not stop: its interval lives in the `tl.playing` effect and is cleared when
@@ -18,9 +20,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { Segmented } from "@/components/ui/controls";
+import { DockToggle } from "@/components/ui/DockToggle";
 import { tip } from "@/components/ui/Tooltip";
 import { useApp } from "@/lib/store/app-provider";
 import { useWs, useWsApi } from "@/lib/store/workspace-provider";
+import { DockClose, DockGrip, ResizeEdge } from "./DockChrome";
 import { buildSchedule, dayLabel, windowMetrics } from "@/lib/timeline";
 import type { TimelinePreset } from "@/lib/types";
 import { addDays, cn, fmtMoney, hash } from "@/lib/utils";
@@ -92,15 +96,25 @@ export function Timeline() {
 
   const win = tl.window;
   const stages = project.stages;
+  const size = useWs((s) => s.dockSize.timeline);
+  const px = useWs((s) => s.dockPx.timeline);
+  const open = size !== "min";
 
   return (
-    <section aria-label="Timeline" className="flex shrink-0 flex-col border-t border-line bg-panel" style={{ height: tl.open ? "17rem" : "1.875rem" }} data-testid="timeline">
-      <header className="flex h-[1.875rem] shrink-0 items-center gap-2 border-b border-soft px-2">
-        <button aria-expanded={tl.open} aria-label={tl.open ? "Collapse timeline" : "Expand timeline"} onClick={() => ws.getState().setTimeline({ open: !tl.open })} className="grid size-5 place-items-center rounded text-t2 hover:bg-t1/10 hover:text-t1">
-          <Icon name={tl.open ? "chevDown" : "chevUp"} size={14} />
-        </button>
+    <section
+      aria-label="Timeline"
+      data-size={size}
+      data-dock="timeline"
+      className="relative flex shrink-0 flex-col border-t border-line bg-panel transition-[height] duration-150"
+      style={{ height: size === "large" ? "var(--h-timeline-large)" : open ? (px ? `${px}px` : "17rem") : "1.875rem" }}
+      data-testid="timeline"
+    >
+      <ResizeEdge dock="timeline" edge="top" />
+      <header className="flex h-[1.875rem] shrink-0 items-center gap-2 border-b border-soft pl-1 pr-2">
+        <DockGrip dock="timeline" />
+        <DockToggle dock="timeline" side="bottom" />
         <span className="label-xs !text-t1">Timeline</span>
-        <div className="ml-2 flex items-center gap-1" role="group" aria-label="Time window presets">
+        <div className="ml-2 flex items-center gap-1" role="group" aria-label="Time Window Presets">
           {PRESETS.map((p) => (
             <button
               key={p.id}
@@ -113,12 +127,12 @@ export function Timeline() {
             </button>
           ))}
         </div>
-        {tl.open && (
+        {open && (
           <div className="ml-1 flex items-center gap-1 text-[0.6875rem] text-t2">
             <span className="text-t3">Custom</span>
-            <input aria-label="Window start day" className="input mono !h-5 !w-12 !px-1.5 !text-[0.6875rem]" inputMode="numeric" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input aria-label="Window Start Day" className="input mono !h-5 !w-12 !px-1.5 !text-[0.6875rem]" inputMode="numeric" value={from} onChange={(e) => setFrom(e.target.value)} />
             <span>→</span>
-            <input aria-label="Window end day" className="input mono !h-5 !w-12 !px-1.5 !text-[0.6875rem]" inputMode="numeric" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyCustom()} />
+            <input aria-label="Window End Day" className="input mono !h-5 !w-12 !px-1.5 !text-[0.6875rem]" inputMode="numeric" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyCustom()} />
             <button className="btn !h-5 px-2 text-[0.6875rem]" onClick={applyCustom}>
               Apply
             </button>
@@ -139,17 +153,18 @@ export function Timeline() {
             </span>
             <span>Spent {fmtMoney(metrics.spent, currency, true)}</span>
             <span>Crew {metrics.crew}</span>
-            <button className="text-t3 hover:text-t1" onClick={() => ws.getState().clearWindow()} aria-label="Clear window">
+            <button className="text-t3 hover:text-t1" onClick={() => ws.getState().clearWindow()} aria-label="Clear Window">
               <Icon name="close" size={12} />
             </button>
           </div>
         )}
-        {tl.open && <Segmented size="sm" label="Gantt scale" value={tl.zoom} onChange={(v) => ws.getState().setTimeline({ zoom: v })} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]} />}
+        {open && <Segmented size="sm" label="Gantt Scale" value={tl.zoom} onChange={(v) => ws.getState().setTimeline({ zoom: v })} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]} />}
+        <DockClose dock="timeline" />
       </header>
 
-      {tl.open && (
+      {open && (
         <div className="flex min-h-0 flex-1 flex-col">
-          <ol className="flex shrink-0 gap-1 border-b border-soft px-2 py-1.5" aria-label="Phase tracker">
+          <ol className="flex shrink-0 gap-1 border-b border-soft px-2 py-1.5" aria-label="Phase Tracker">
             {stages.map((st) => (
               <li key={st.name} className={cn("min-w-0 flex-1 rounded-md border px-2 py-1", st.status === "active" ? "border-accent/60 bg-accent/10" : "border-line bg-panel-alt")}>
                 <div className="flex items-center gap-1.5 text-[0.6875rem] font-medium text-t1">
@@ -166,11 +181,11 @@ export function Timeline() {
                   <div className="h-full rounded-full" style={{ width: `${st.percent}%`, background: st.status === "done" ? "var(--ok)" : "var(--accent)" }} />
                 </div>
                 <div className="mono mt-1 flex gap-2 text-[0.5625rem] text-t3">
-                  <span {...tip("Open tasks", `${st.openTasks} open in ${st.name}`)}>T{st.openTasks}</span>
-                  <span {...tip("Open issues", `${st.openIssues} open`)} className={st.openIssues ? "text-warn" : undefined}>
+                  <span {...tip("Open Tasks", `${st.openTasks} open in ${st.name}`)}>T{st.openTasks}</span>
+                  <span {...tip("Open Issues", `${st.openIssues} open`)} className={st.openIssues ? "text-warn" : undefined}>
                     I{st.openIssues}
                   </span>
-                  <span {...tip("Required approvals", `${st.approvals} approval(s) needed`)}>A{st.approvals}</span>
+                  <span {...tip("Required Approvals", `${st.approvals} approval(s) needed`)}>A{st.approvals}</span>
                 </div>
               </li>
             ))}
@@ -183,7 +198,7 @@ export function Timeline() {
               <div className="relative" style={{ width: width + 176 }}>
                 {/* ruler */}
                 <div className="sticky top-0 z-[2] flex h-5 border-b border-soft bg-panel">
-                  <div className="sticky left-0 z-[3] w-44 shrink-0 border-r border-soft bg-panel px-2 text-[0.625rem] leading-5 text-t3">Phase / task</div>
+                  <div className="sticky left-0 z-[3] w-44 shrink-0 border-r border-soft bg-panel px-2 text-[0.625rem] leading-5 text-t3">Phase / Task</div>
                   <div
                     className="relative flex-1 cursor-pointer"
                     onClick={(e) => {

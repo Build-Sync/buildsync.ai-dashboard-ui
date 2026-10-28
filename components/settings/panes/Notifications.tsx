@@ -39,7 +39,7 @@ export function NotificationsPane() {
                   <td className="px-4 py-3 text-t1">{e.label}</td>
                   <td className="px-4 py-3 text-center">
                     {e.id === "weekly-digest" ? (
-                      <span className="text-t3" aria-label="Not available">
+                      <span className="text-t3" aria-label="Not Available">
                         —
                       </span>
                     ) : (

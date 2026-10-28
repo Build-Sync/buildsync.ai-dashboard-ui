@@ -83,10 +83,10 @@ export function Compliance() {
         </div>
         <div className="mt-2 flex gap-1.5">
           <button className="btn h-6 flex-1 text-[0.6875rem]" onClick={rerun} disabled={running}>
-            {running ? <Spinner size={12} /> : <Icon name="refresh" size={12} />} Run code check
+            {running ? <Spinner size={12} /> : <Icon name="refresh" size={12} />} Run Code Check
           </button>
           <button className="btn h-6 text-[0.6875rem]" disabled={!flagged.length} onClick={() => ws.getState().sendToPe(flagged)}>
-            <Icon name="pesign" size={12} /> PE queue ({flagged.length})
+            <Icon name="pesign" size={12} /> PE Queue ({flagged.length})
           </button>
         </div>
       </div>
@@ -133,7 +133,7 @@ export function Compliance() {
                               </button>
                             ))}
                             <button onClick={() => ws.getState().focusElements(c.elements)} className="rounded px-1.5 py-px text-[0.625rem] text-accent hover:underline">
-                              Show all
+                              Show All
                             </button>
                           </div>
                         )}

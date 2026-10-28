@@ -1,7 +1,7 @@
 /**
  * components/workspace/Ribbon/RibbonTabs.tsx
  *
- * WHAT   The ribbon tab strip (28 px) and the always-visible "Advisory only · PE sign-off required" pill on the
+ * WHAT   The ribbon tab strip (28 px) and the always-visible "Advisory Only · PE Sign-Off Required" pill on the
  *        right, which opens the PE sign-off dialog.
  * FOR    Choosing which ribbon tab is shown (workspace `tab`). The advisory pill must stay visible on every
  *        screen; its tooltip wording depends on Settings → General → Advisory banner.
@@ -25,7 +25,7 @@ export function RibbonTabs() {
   const advisory = useApp((s) => s.settings.general.advisoryBanner);
   return (
     <div className="flex h-[var(--h-tabs)] shrink-0 items-end border-b border-line bg-chrome pl-1.5 pr-2" data-testid="ribbon-tabs">
-      <div role="tablist" aria-label="Ribbon tabs" className="flex items-end">
+      <div role="tablist" aria-label="Ribbon Tabs" className="flex items-end">
         {RIBBON.map((t) => (
           <button
             key={t.id}
@@ -48,10 +48,10 @@ export function RibbonTabs() {
         onClick={() => ws.getState().openModal("pe-signoff")}
         className={cn("mb-0.5 flex h-5 items-center gap-1.5 rounded-full border px-2.5 text-[0.625rem] font-semibold uppercase tracking-wide transition-colors", "border-warn/50 bg-warn/10 text-warn hover:bg-warn/20")}
         data-testid="advisory-pill"
-        {...tip("Advisory only · PE sign-off required", advisory ? "Every AI output is labelled “AI-generated, unstamped”. Life-safety and load-bearing items need a licensed PE." : "Advisory banner is hidden in settings, but the PE sign-off rule still applies.", "PESIGN")}
+        {...tip("Advisory Only · PE Sign-Off Required", advisory ? "Every AI output is labelled “AI-generated, unstamped”. Life-safety and load-bearing items need a licensed PE." : "Advisory banner is hidden in settings, but the PE sign-off rule still applies.", "PESIGN")}
       >
         <Icon name="shieldAlert" size={11} />
-        Advisory only · PE sign-off required
+        Advisory Only · PE Sign-Off Required
       </button>
     </div>
   );

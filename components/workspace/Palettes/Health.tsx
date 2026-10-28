@@ -47,14 +47,14 @@ export function Health() {
     <div className="p-3" data-testid="palette-health">
       <div className="mb-3 flex justify-end">
         <Segmented<HealthRange>
-          label="Health range"
+          label="Health Range"
           size="sm"
           value={range}
           onChange={(v) => ws.getState().setHealthRange(v)}
           options={[
-            { value: "all", label: "All time" },
-            { value: "30d", label: "Last 30 days" },
-            { value: "version", label: "This version" },
+            { value: "all", label: "All Time" },
+            { value: "30d", label: "Last 30 Days" },
+            { value: "version", label: "This Version" },
           ]}
         />
       </div>

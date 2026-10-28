@@ -41,6 +41,20 @@ export function saveFile(name: string, content: string, mime: string, options: S
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/** Download a binary file (a PNG picture …) through a temporary link. */
+export function saveBlob(name: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 /** Rows to CSV text: every cell quoted, quotes doubled, CRLF line ends (RFC 4180, what Excel expects). */
 export function toCsv(rows: string[][]): string {
   return rows.map((r) => r.map((c) => `"${c.replaceAll('"', '""')}"`).join(",")).join("\r\n");

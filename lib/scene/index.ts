@@ -15,6 +15,7 @@
  */
 import type { Project, SceneKind } from "../types";
 import { buildBlank, buildClinic } from "./clinic";
+import { buildCottage } from "./cottage";
 import { signedArea } from "./builder";
 import { buildResidence } from "./residence";
 import type { Category, LevelKey, Scene, SceneElement } from "./types";
@@ -27,7 +28,7 @@ const cache = new Map<SceneKind, Scene>();
 export function getScene(kind: SceneKind): Scene {
   let s = cache.get(kind);
   if (!s) {
-    s = kind === "residence" ? buildResidence() : kind === "clinic" ? buildClinic() : buildBlank();
+    s = kind === "residence" ? buildResidence() : kind === "cottage" ? buildCottage() : kind === "clinic" ? buildClinic() : buildBlank();
     cache.set(kind, s);
   }
   return s;
@@ -113,6 +114,35 @@ const RATES: Record<Category, [number, number]> = {
   Fixture: [620, 340],
   Landscape: [120, 90],
   Paving: [6.2, 4.8],
+  Line: [0, 0],
+  Shape: [0, 0],
+  Hatch: [0, 0],
+  Room: [0, 0],
+  Annotation: [0, 0],
+  Duct: [18, 14],
+  Pipe: [8, 10],
+  Tray: [12, 8],
+  Device: [120, 60],
+  Ramp: [30, 22],
+  Equipment: [2400, 900],
+  Connection: [85, 60],
+  Brace: [32, 20],
+  Framing: [4, 3],
+  Outbuilding: [38, 22],
+  Tree: [380, 160],
+  Planting: [9, 6],
+  Septic: [3900, 2700],
+  Pool: [32000, 14000],
+  Rock: [140, 90],
+  Road: [4.5, 3.2],
+  Sidewalk: [7.5, 5.5],
+  Sign: [180, 140],
+  Signal: [42000, 18000],
+  Gutter: [9, 6],
+  Drain: [650, 900],
+  Solar: [190, 110],
+  Fence: [22, 14],
+  Wire: [1.2, 2.2],
 };
 
 /** Sections of properties (general, geometry, material, structural, cost) for one element. */
@@ -141,7 +171,17 @@ export function elementDetails(scene: Scene, el: SceneElement, rename?: string):
     case "Beam":
     case "Foundation":
     case "Footing":
+    case "Duct":
+    case "Pipe":
+    case "Tray":
+    case "Brace":
       qty = Math.max(length, 1);
+      break;
+    case "Ramp":
+    case "Framing":
+    case "Outbuilding":
+    case "Planting":
+      qty = Math.max(planArea, 1);
       break;
     default:
       qty = 1;
@@ -179,16 +219,16 @@ export function elementDetails(scene: Scene, el: SceneElement, rename?: string):
     ],
     structural: bearing
       ? [
-          ["Design load", `${num(designLoad, 1)} kip/ft`],
+          ["Design Load", `${num(designLoad, 1)} kip/ft`],
           ["Capacity", `${num(capacity, 1)} kip/ft`],
-          ["Safety factor", num(capacity / designLoad, 2)],
-          ["Wind rating", "175 mph (HVHZ)"],
+          ["Safety Factor", num(capacity / designLoad, 2)],
+          ["Wind Rating", "175 mph (HVHZ)"],
         ]
       : [
-          ["Design load", "—"],
+          ["Design Load", "—"],
           ["Capacity", "—"],
-          ["Safety factor", "—"],
-          ["Wind rating", "—"],
+          ["Safety Factor", "—"],
+          ["Wind Rating", "—"],
         ],
     cost: { material, labor, total: material + labor },
   };
@@ -214,6 +254,17 @@ const CAT_GROUPS: [string, Category[]][] = [
   ["Beams", ["Beam"]],
   ["Slabs", ["Slab"]],
   ["Stairs", ["Stair"]],
+  ["Ramps", ["Ramp"]],
+  ["Foundations", ["Foundation", "Footing"]],
+  ["Framing & Bracing", ["Framing", "Brace", "Truss", "Connection"]],
+  ["Equipment", ["Equipment"]],
+  ["Pipes, Wires, Ducts & Devices", ["Duct", "Pipe", "Tray", "Device", "Wire"]],
+  ["Rooms", ["Room"]],
+  ["Drafting", ["Line", "Shape", "Hatch"]],
+  ["Annotations", ["Annotation"]],
+  ["Site Objects", ["Outbuilding", "Tree", "Planting", "Septic", "Pool", "Rock", "Fence"]],
+  ["Roads & Drainage", ["Road", "Sidewalk", "Sign", "Signal", "Drain"]],
+  ["Gutters & Solar", ["Gutter", "Solar"]],
 ];
 
 /** The Project → Site → Building → levels → categories → elements tree. */
@@ -237,8 +288,12 @@ export function buildModelTree(scene: Scene, project: Project): TreeNode[] {
     elementIds: ids(siteEls),
     children: [
       node("site-topo", "Topography", siteEls.filter((e) => e.category === "Topography"), { layer: "topography" }),
-      node("site-land", "Landscape & paving", siteEls.filter((e) => e.category === "Landscape" || e.category === "Paving"), { layer: "landscape" }),
-      { id: "site-trees", label: "Trees", count: scene.trees.length, kind: "category" as const, layer: "site" },
+      node("site-land", "Landscape & Paving", siteEls.filter((e) => e.category === "Landscape" || e.category === "Paving"), { layer: "landscape" }),
+      node("site-objects", "Sheds, Trees & Plantings", siteEls.filter((e) => e.category === "Outbuilding" || e.category === "Tree" || e.category === "Planting")),
+      node("site-pool", "Pools & Rocks", siteEls.filter((e) => e.category === "Pool" || e.category === "Rock")),
+      node("site-civil", "Roads & Drainage", els.filter((e) => e.layer === "civil"), { layer: "civil" }),
+      node("site-utilities", "Septic & Utilities", els.filter((e) => e.layer === "utilities"), { layer: "utilities" }),
+      { id: "site-trees", label: "Trees", count: scene.trees.filter((t) => !t.pick).length, kind: "category" as const, layer: "site" },
     ].filter((n) => (n.count ?? 0) > 0),
   };
 
@@ -251,7 +306,7 @@ export function buildModelTree(scene: Scene, project: Project): TreeNode[] {
       if (sub.length) children.push(node(`${key}-${name}`, name, sub));
     }
     const fur = lv.filter((e) => e.category === "Furniture" || e.category === "Fixture");
-    if (fur.length) children.push(node(`${key}-furn`, "Furniture & fixtures", fur));
+    if (fur.length) children.push(node(`${key}-furn`, "Furniture & Fixtures", fur));
     return { id: key, label, kind: "group", count: lv.length, elementIds: ids(lv), children };
   };
 
@@ -267,9 +322,11 @@ export function buildModelTree(scene: Scene, project: Project): TreeNode[] {
         count: roofEls.length,
         elementIds: ids(roofEls),
         children: [
-          node("roof-surf", "Roof surfaces", roofEls.filter((e) => e.category === "Roof")),
-          node("roof-wall", "Gable walls", roofEls.filter((e) => e.category === "Wall")),
+          node("roof-surf", "Roof Surfaces", roofEls.filter((e) => e.category === "Roof")),
+          node("roof-wall", "Gable Walls", roofEls.filter((e) => e.category === "Wall")),
           node("roof-truss", "Trusses", roofEls.filter((e) => e.category === "Truss")),
+          node("roof-solar", "Solar Panels", els.filter((e) => e.category === "Solar")),
+          node("roof-gutter", "Gutters & Downspouts", els.filter((e) => e.category === "Gutter")),
         ].filter((n) => (n.count ?? 0) > 0),
       }
     : null;

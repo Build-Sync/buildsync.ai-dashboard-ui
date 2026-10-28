@@ -25,6 +25,7 @@ import { AiSettingsPane } from "./panes/AiSettings";
 import { DisplayPane } from "./panes/Display";
 import { GeneralPane } from "./panes/General";
 import { GridSnapPane } from "./panes/GridSnap";
+import { ButtonsPane, HelpPane } from "./panes/Help";
 import { IntegrationsPane } from "./panes/Integrations";
 import { NotificationsPane } from "./panes/Notifications";
 import { PermissionsPane } from "./panes/Permissions";
@@ -62,6 +63,10 @@ export function PaneFor({ slug }: { slug: string[] }): ReactNode {
       return <PermissionsPane />;
     case "account":
       return <AccountPane />;
+    case "help":
+      return <HelpPane />;
+    case "buttons":
+      return <ButtonsPane />;
     default:
       return <GeneralPane />;
   }

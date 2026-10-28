@@ -23,11 +23,11 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-/** Browser-tab title: the project's name, or "Project not found". */
+/** Browser-tab title: the project's name, or "Project Not Found". */
 export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
   const { projectId } = await params;
   const project = await getProject(projectId);
-  return { title: project?.name ?? "Project not found" };
+  return { title: project?.name ?? "Project Not Found" };
 }
 
 /* The main CAD screen. UI state (tab, panel, explorer, view, section) comes from the URL query. */

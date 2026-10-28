@@ -48,7 +48,7 @@ export function Council() {
               <Icon name="plus" size={14} />
             </span>
           </div>
-          <p className="text-[0.8125rem] font-semibold text-t1">Connect another agent</p>
+          <p className="text-[0.8125rem] font-semibold text-t1">Connect Another Agent</p>
           <p className="mx-auto mt-1 max-w-[16rem] text-[0.75rem] text-t2">The Council needs two or more connected agents so they can debate a decision and vote.</p>
           <Link href="/settings/integrations" className="btn btn-primary mt-3 h-7">
             Open Connectors

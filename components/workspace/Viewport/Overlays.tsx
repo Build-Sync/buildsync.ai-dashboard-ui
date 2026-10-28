@@ -3,10 +3,13 @@
  *
  * WHAT   The SVG layers drawn on top of the model: shared defs (hatch, arrow marker, stress gradient),
  *        selection and hover outlines with grips, stress heat spots and legend, simulation vectors, the solar
- *        path, section callouts, 2D plan annotations (door swings, dimensions, grid bubbles, room labels), the
- *        north arrow and the UCS icon.
+ *        path, section callouts, 2D plan annotations (door swings, dimensions, grid bubbles, room labels), buried
+ *        utilities (the septic tank and drain field, dashed with their names), room
+ *        names standing up in the 3D view (RoomLabels3D, with the Labels switch), the markers of the other rooms in
+ *        a room view (RoomMarkers), furniture names (FurnitureLabels), the north arrow and the UCS icon.
  * FOR    ModelViewport and SheetView render these inside their SVG. Most receive the scene and the projector, so
- *        they follow the camera; none of them handle input (pointer-events are off).
+ *        they follow the camera; they handle no input themselves (pointer-events are off), except that room names
+ *        and room markers carry data-room, which ModelViewport reads on a click or double-click to go into a room.
  * DEBUG  - An overlay is missing: each is switched on by its workspace state (stressOverlay, simVectors, solar,
  *          section …) in ModelViewport.
  *        - Overlay colours look wrong on a sheet: they read --vp-ink / --vp-ink-dim set by the sheet or the
@@ -18,6 +21,7 @@
 "use client";
 
 import { memo } from "react";
+import { OWN_BUILDING } from "@/lib/draw/interior";
 import type { Projector } from "@/lib/scene/camera";
 import { elementOutline, stressColor, STRESS_GRADIENT, STRESS_MAX } from "@/lib/scene/render";
 import { sunAltAz } from "@/lib/scene/sun";
@@ -34,6 +38,65 @@ export function ViewportDefs() {
       <pattern id="bs-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
         <line x1="0" y1="0" x2="0" y2="5" style={{ stroke: "var(--vp-ink)" }} strokeWidth="0.8" strokeOpacity="0.6" />
       </pattern>
+      {/* the glow of a lit light, and the shading of tree and bush foliage (lib/scene/render.ts) */}
+      <radialGradient id="bs-glow">
+        <stop offset="0" stopColor="#fff3c4" stopOpacity="0.75" />
+        <stop offset="0.35" stopColor="#ffd77a" stopOpacity="0.35" />
+        <stop offset="1" stopColor="#ffd77a" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id="bs-leaf" cx="0.35" cy="0.3" r="0.8">
+        <stop offset="0" stopColor="#6fb35f" />
+        <stop offset="0.55" stopColor="#3f8a4e" />
+        <stop offset="1" stopColor="#245a33" />
+      </radialGradient>
+      <radialGradient id="bs-leaf-dark" cx="0.35" cy="0.3" r="0.85">
+        <stop offset="0" stopColor="#4f9a54" />
+        <stop offset="1" stopColor="#1d4a2a" />
+      </radialGradient>
+      <radialGradient id="bs-pine" cx="0.4" cy="0.25" r="0.9">
+        <stop offset="0" stopColor="#3f7d4a" />
+        <stop offset="1" stopColor="#173f26" />
+      </radialGradient>
+      <radialGradient id="bs-bush" cx="0.35" cy="0.3" r="0.8">
+        <stop offset="0" stopColor="#7cbf62" />
+        <stop offset="0.6" stopColor="#4a9248" />
+        <stop offset="1" stopColor="#2a6233" />
+      </radialGradient>
+      {/* the ground's textures (lib/ground.ts GroundPattern), drawn over its surface colour */}
+      <pattern id="bs-ground-grass" width="12" height="12" patternUnits="userSpaceOnUse">
+        <path d="M2 10l1-4M5 11l-.6-4.4M9 9.5l1.4-3.6M7 4l.8-3M11 3.5l-.7-2.6" stroke="#1d3a22" strokeOpacity="0.55" strokeWidth="0.7" strokeLinecap="round" />
+        <path d="M3.5 10.5l-.4-3M10 10l.3-2.8" stroke="#9fd38a" strokeOpacity="0.35" strokeWidth="0.6" strokeLinecap="round" />
+      </pattern>
+      <pattern id="bs-ground-speckle" width="10" height="10" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="3" r="0.7" fill="#3b2a1b" fillOpacity="0.6" />
+        <circle cx="7" cy="7.5" r="0.9" fill="#3b2a1b" fillOpacity="0.45" />
+        <circle cx="8" cy="2" r="0.5" fill="#e9d7b8" fillOpacity="0.5" />
+        <circle cx="3.5" cy="8" r="0.45" fill="#e9d7b8" fillOpacity="0.45" />
+      </pattern>
+      <pattern id="bs-ground-clods" width="14" height="14" patternUnits="userSpaceOnUse">
+        <path d="M1 4c2 1.2 3.4-.8 5.5.4M8 10c1.6-1 3 .9 5 .1M3 12.5c.8-1.4 2.2-.9 3-2" stroke="#4a2914" strokeOpacity="0.55" strokeWidth="0.75" fill="none" strokeLinecap="round" />
+        <ellipse cx="10" cy="4" rx="1.6" ry="1" fill="#5b3420" fillOpacity="0.35" />
+      </pattern>
+      <pattern id="bs-ground-loam" width="9" height="9" patternUnits="userSpaceOnUse">
+        <circle cx="1.5" cy="2" r="0.6" fill="#1f150c" fillOpacity="0.6" />
+        <circle cx="6" cy="5.5" r="0.75" fill="#1f150c" fillOpacity="0.5" />
+        <circle cx="4" cy="8" r="0.4" fill="#c9a77d" fillOpacity="0.55" />
+        <path d="M6.5 1.5l1.4.6" stroke="#c9a77d" strokeOpacity="0.4" strokeWidth="0.5" />
+      </pattern>
+      <pattern id="bs-ground-sand" width="6" height="6" patternUnits="userSpaceOnUse">
+        <circle cx="1" cy="1.5" r="0.35" fill="#6d5634" fillOpacity="0.55" />
+        <circle cx="4" cy="3" r="0.3" fill="#6d5634" fillOpacity="0.45" />
+        <circle cx="2.5" cy="5" r="0.35" fill="#fff4dc" fillOpacity="0.6" />
+        <circle cx="5.2" cy="5.4" r="0.25" fill="#6d5634" fillOpacity="0.4" />
+      </pattern>
+      <pattern id="bs-ground-gravel" width="12" height="12" patternUnits="userSpaceOnUse">
+        <ellipse cx="3" cy="3" rx="1.8" ry="1.3" fill="#d8d3cc" fillOpacity="0.45" stroke="#4d4740" strokeOpacity="0.5" strokeWidth="0.5" />
+        <ellipse cx="9" cy="8" rx="1.5" ry="1.1" fill="#d8d3cc" fillOpacity="0.4" stroke="#4d4740" strokeOpacity="0.5" strokeWidth="0.5" />
+        <ellipse cx="4" cy="9.5" rx="1" ry="0.8" fill="#4d4740" fillOpacity="0.35" />
+      </pattern>
+      <pattern id="bs-ground-rock" width="18" height="18" patternUnits="userSpaceOnUse">
+        <path d="M0 6l5 1.5 4-2.5 5 1 4-1M3 18l2-5 6-2 3 3 4-1M9 5l1 6" stroke="#4f4a41" strokeOpacity="0.5" strokeWidth="0.7" fill="none" strokeLinejoin="round" />
+      </pattern>
       <marker id="bs-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
         <path d="M0 0 10 5 0 10z" fill="context-stroke" />
       </marker>
@@ -47,7 +110,7 @@ export function ViewportDefs() {
 }
 
 /* ── selection / hover outlines + grips ───────────────────────────────── */
-export const SelectionOverlay = memo(function SelectionOverlay({ scene, proj, selection, hover }: { scene: Scene; proj: Projector; selection: string[]; hover: string | null }) {
+export const SelectionOverlay = memo(function SelectionOverlay({ scene, proj, selection, hover, noGrips }: { scene: Scene; proj: Projector; selection: string[]; hover: string | null; noGrips?: Record<string, unknown> }) {
   const many = selection.length > 12;
   return (
     <g pointerEvents="none">
@@ -69,9 +132,9 @@ export const SelectionOverlay = memo(function SelectionOverlay({ scene, proj, se
           return (
             <g key={id}>
               <polygon points={o.hull.map((p) => `${f1(p[0])},${f1(p[1])}`).join(" ")} fill="none" stroke="var(--accent)" strokeWidth={1.4} strokeDasharray="5 3" className="anim-march" />
-              {o.grips.map((g, i) => (
-                <rect key={i} x={g[0] - 2.8} y={g[1] - 2.8} width={5.6} height={5.6} fill="var(--accent)" stroke="#fff" strokeWidth={0.8} />
-              ))}
+              {/* drawn elements show their own point grips instead (DraftLayer) */}
+              {!noGrips?.[id] &&
+                o.grips.map((g, i) => <rect key={i} x={g[0] - 2.8} y={g[1] - 2.8} width={5.6} height={5.6} fill="var(--accent)" stroke="#fff" strokeWidth={0.8} />)}
             </g>
           );
         })}
@@ -270,7 +333,7 @@ export const Callouts = memo(function Callouts({ callouts, proj, sectionY }: { c
 });
 
 /* ── plan annotations (2D) ────────────────────────────────────────────── */
-export const PlanAnnotations = memo(function PlanAnnotations({ scene, proj, level, showGrid }: { scene: Scene; proj: Projector; level: LevelKey; showGrid: boolean }) {
+export const PlanAnnotations = memo(function PlanAnnotations({ scene, proj, level, showGrid, rooms = true }: { scene: Scene; proj: Projector; level: LevelKey; showGrid: boolean; rooms?: boolean }) {
   const z = 0;
   const P = (x: number, y: number) => proj.project([x, y, z]);
   const ink = "var(--vp-ink)";
@@ -352,11 +415,12 @@ export const PlanAnnotations = memo(function PlanAnnotations({ scene, proj, leve
 
       {/* room labels */}
       {scene.rooms
-        .filter((r) => r.level === level)
+        .filter((r) => rooms && r.level === level)
         .map((r) => {
           const q = P(r.at[0], r.at[1]);
           return (
-            <g key={r.id} textAnchor="middle" fill={ink}>
+            <g key={r.id} textAnchor="middle" fill={ink} pointerEvents="visiblePainted" cursor="pointer" data-room={r.id} data-testid="room-label-2d">
+              <title>{`${r.name}: double-click to stand inside it`}</title>
               <text x={q.x} y={q.y} fontSize={9.5} fontWeight={600} letterSpacing="0.06em">
                 {r.name}
               </text>
@@ -366,6 +430,169 @@ export const PlanAnnotations = memo(function PlanAnnotations({ scene, proj, leve
             </g>
           );
         })}
+    </g>
+  );
+});
+
+/**
+ * What lies buried on the site (the septic tank, the drain field trenches, the distribution box), drawn as dashed
+ * outlines with their names, as site and floor plans show them. `outlines` false keeps only the names (the foundation
+ * plan already draws the outlines).
+ */
+export const UtilityMarks = memo(function UtilityMarks({ scene, proj, outlines = true, paper = false }: { scene: Scene; proj: Projector; outlines?: boolean; paper?: boolean }) {
+  const ink = paper ? "#6b5742" : "#c9b27c";
+  const halo = paper ? "#fff" : "var(--bg-viewport)";
+  const buried = scene.prisms.filter((p) => p.layer === "utilities" && p.underground && p.axis === "z");
+  if (!buried.length) return null;
+  const named = scene.elements.filter((e) => e.layer === "utilities" && e.min[2] < scene.grade - 0.3 && Math.max(e.max[0] - e.min[0], e.max[1] - e.min[1]) > 3);
+  return (
+    <g pointerEvents="none" data-testid="utility-marks">
+      {outlines &&
+        buried.map((p) => (
+          <polygon key={p.key} points={p.poly.map(([x, y]) => proj.project([x, y, 0])).map((q) => `${f1(q.x)},${f1(q.y)}`).join(" ")} fill={ink} fillOpacity={0.07} stroke={ink} strokeWidth={1} strokeDasharray="5 3" />
+        ))}
+      {named.map((e) => {
+        const q = proj.project([(e.min[0] + e.max[0]) / 2, (e.min[1] + e.max[1]) / 2, 0]);
+        return (
+          <text key={e.id} x={f1(q.x)} y={f1(q.y + 3)} textAnchor="middle" fontSize={8.5} fontWeight={600} letterSpacing="0.04em" fill={ink} stroke={halo} strokeWidth={2.5} paintOrder="stroke" fontFamily="var(--font-ui)" data-testid="utility-label">
+            {e.name.split(" · ")[0].toUpperCase()}
+          </text>
+        );
+      })}
+    </g>
+  );
+});
+
+/**
+ * Room names in the 3D view: each name on a stem above its floor, nearer ones drawn last and stronger. A double-click on
+ * a name stands you inside that room (the room view). Names that would
+ * overlap climb their stem (nearest rooms first); one with no free spot is left out until the view turns. Rooms on the
+ * removed side of a section cut, and on levels the plan levels leave out, are skipped.
+ */
+export const RoomLabels3D = memo(function RoomLabels3D({ scene, proj, cutY, levels }: { scene: Scene; proj: Projector; cutY: number | null; levels?: ReadonlySet<LevelKey> }) {
+  const rows = scene.rooms
+    .filter((r) => (cutY === null || r.at[1] >= cutY) && (!levels || levels.has(r.level)))
+    .map((r) => {
+      const z = scene.levelZ[r.level] ?? 0;
+      const foot = proj.project([r.at[0], r.at[1], z + 0.2]);
+      return { r, foot, depth: foot.depth };
+    })
+    .filter(({ depth }) => depth > proj.near)
+    .sort((a, b) => b.depth - a.depth);
+  if (!rows.length) return null;
+  const d0 = rows[rows.length - 1].depth;
+  const d1 = rows[0].depth;
+  // nearest first: each label takes the lowest free spot on its stem; one that finds none is left out
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const spot = new Map<string, number>();
+  for (const { r, foot } of [...rows].reverse()) {
+    const w = Math.max(44, r.name.length * 6.2 + 16);
+    for (const rise of [26, 46, 66, 86]) {
+      const box = { x0: foot.x - w / 2 - 2, x1: foot.x + w / 2 + 2, y0: foot.y - rise - 19, y1: foot.y - rise + 1 };
+      if (placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1)) continue;
+      placed.push(box);
+      spot.set(r.id, rise);
+      break;
+    }
+  }
+  return (
+    <g pointerEvents="none" fontFamily="var(--font-ui)" data-testid="room-labels-3d">
+      {rows.map(({ r, foot, depth }) => {
+        const rise = spot.get(r.id);
+        if (rise === undefined) return null;
+        const far = d1 > d0 ? (depth - d0) / (d1 - d0) : 0;
+        const op = 1 - far * 0.45;
+        const top = foot.y - rise;
+        const w = Math.max(44, r.name.length * 6.2 + 16);
+        return (
+          <g key={r.id} opacity={op} data-testid="room-label-3d">
+            <path d={`M${foot.x.toFixed(1)},${foot.y.toFixed(1)}V${top.toFixed(1)}`} stroke="var(--vp-ink-dim)" strokeWidth={1} />
+            <circle cx={foot.x} cy={foot.y} r={2} fill="var(--vp-ink-dim)" />
+            <rect x={foot.x - w / 2} y={top - 17} width={w} height={17} rx={3} fill="var(--bg-chrome)" fillOpacity={0.9} stroke="var(--line)" pointerEvents="visiblePainted" cursor="pointer" data-room={r.id}>
+              <title>{`${r.name}: double-click to stand inside it`}</title>
+            </rect>
+            <text x={foot.x} y={top - 5} fontSize={9.5} fontWeight={600} textAnchor="middle" fill="var(--vp-ink)" letterSpacing="0.04em" pointerEvents="visiblePainted" cursor="pointer" data-room={r.id}>
+              {r.name}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
+/**
+ * In a room view: the other rooms of the storey of the building you are in, as markers to walk to, like the arrows of
+ * Street View (the other buildings are in the room bar's building picker). A click on one goes there; nearer ones are
+ * larger. Rooms behind the eye are left out.
+ */
+export const RoomMarkers = memo(function RoomMarkers({ scene, proj, level, here, building }: { scene: Scene; proj: Projector; level: LevelKey; here: string | null; building: string }) {
+  const z = (scene.levelZ[level] ?? 0) + 3.2;
+  const rows = scene.rooms
+    .filter((r) => r.level === level && r.id !== here && (r.building?.id ?? OWN_BUILDING) === building)
+    .map((r) => ({ r, q: proj.project([r.at[0], r.at[1], z]) }))
+    .filter(({ q }) => q.depth > 1.5)
+    .sort((a, b) => b.q.depth - a.q.depth);
+  // nearest first: a marker that would cover another moves down below it
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const spots = new Map<string, { x: number; y: number; k: number; w: number; h: number }>();
+  for (const { r, q } of [...rows].reverse()) {
+    const k = clamp(14 / q.depth, 0.75, 1.25);
+    const w = (r.name.length * 6.4 + 30) * k;
+    const h = 22 * k;
+    let y = q.y;
+    for (let i = 0; i < 6 && placed.some((p) => p.x0 < q.x + w / 2 && q.x - w / 2 < p.x1 && p.y0 < y + h / 2 && y - h / 2 < p.y1); i++) y += h + 4;
+    placed.push({ x0: q.x - w / 2, x1: q.x + w / 2, y0: y - h / 2, y1: y + h / 2 });
+    spots.set(r.id, { x: q.x, y, k, w, h });
+  }
+  return (
+    <g fontFamily="var(--font-ui)" data-testid="room-markers">
+      {rows.map(({ r }) => {
+        const { x, y, k, w, h } = spots.get(r.id)!;
+        return (
+          <g key={r.id} transform={`translate(${f1(x)},${f1(y)})`} cursor="pointer" data-room={r.id} data-testid="room-marker">
+            <title>{`Go to ${r.name}`}</title>
+            <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={h / 2} fill="var(--bg-chrome)" fillOpacity={0.88} stroke="var(--accent)" strokeWidth={1.2} />
+            <circle cx={-w / 2 + h / 2} cy={0} r={h * 0.32} fill="var(--accent)" />
+            <path d={`M${f1(-w / 2 + h * 0.4)},${f1(-h * 0.14)}l${f1(h * 0.14)},${f1(h * 0.14)}l${f1(-h * 0.14)},${f1(h * 0.14)}`} stroke="#fff" strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <text x={h * 0.35} y={4 * k} fontSize={10.5 * k} fontWeight={600} textAnchor="middle" fill="var(--vp-ink)" letterSpacing="0.04em">
+              {r.name}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
+/**
+ * Furniture names (the Furniture Names switch): on the plan, small and centred on each piece of the storey; in 3D,
+ * just above each piece, nearer ones first, leaving out names that would overlap. Behind the eye of a room view, none.
+ */
+export const FurnitureLabels = memo(function FurnitureLabels({ scene, proj, level }: { scene: Scene; proj: Projector; level: LevelKey | null }) {
+  const pieces = scene.elements.filter((e) => e.category === "Furniture" && (!level || e.level === level));
+  const rows = pieces
+    .map((e) => {
+      const at: V3 = [(e.min[0] + e.max[0]) / 2, (e.min[1] + e.max[1]) / 2, level ? 0 : e.max[2] + 0.35];
+      return { e, q: proj.project(at) };
+    })
+    .filter(({ q }) => !proj.eye || (q.depth > 1 && q.depth < 45))
+    .sort((a, b) => a.q.depth - b.q.depth);
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const shown = rows.filter(({ e, q }) => {
+    const w = e.name.length * 5 + 8;
+    const box = { x0: q.x - w / 2, x1: q.x + w / 2, y0: q.y - 8, y1: q.y + 4 };
+    if (placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1)) return false;
+    placed.push(box);
+    return true;
+  });
+  return (
+    <g pointerEvents="none" fontFamily="var(--font-ui)" data-testid="furniture-labels">
+      {shown.map(({ e, q }) => (
+        <text key={e.id} x={f1(q.x)} y={f1(q.y + 3)} textAnchor="middle" fontSize={8} fill="var(--vp-ink)" fillOpacity={0.85} stroke="var(--bg-viewport)" strokeWidth={2.4} strokeOpacity={0.8} paintOrder="stroke" data-testid="furniture-label">
+          {e.name}
+        </text>
+      ))}
     </g>
   );
 });
@@ -407,7 +634,7 @@ export function UcsIcon({ proj }: { proj: Projector }) {
     );
   };
   return (
-    <svg className="pointer-events-none absolute bottom-3 left-3 z-10 overflow-visible" width={64} height={64} viewBox="-22 -46 64 64" aria-label="UCS icon">
+    <svg className="pointer-events-none absolute bottom-3 left-3 z-10 overflow-visible" width={64} height={64} viewBox="-22 -46 64 64" aria-label="UCS Icon">
       {axis([1.6, 0, 0], "#ef5b5b", "X")}
       {axis([0, 1.6, 0], "#3ecf8e", "Y")}
       {axis([0, 0, 1.6], "#4c8dff", "Z")}

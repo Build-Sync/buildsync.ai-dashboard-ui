@@ -112,7 +112,7 @@ export function buildClinic(): Scene {
   ext("S", "South", [
     win("WN-101", 3.5, 4.5),
     win("WN-102", 10, 4.5),
-    { id: "D-101", at: 21, w: 6, sill: 0, head: 7.5, kind: "door", name: "Main Entrance (double)", swing: { hinge: "start", dir: -1 } },
+    { id: "D-101", at: 21, w: 6, sill: 0, head: 7.5, kind: "door", name: "Main Entrance (Double)", swing: { hinge: "start", dir: -1 } },
     win("WN-103", 33, 4.5),
     win("WN-104", 40, 4.5),
   ]);
@@ -196,29 +196,29 @@ export function buildClinic(): Scene {
   // MEP (compact)
   const run = (id: string, layer: "electrical" | "plumbing" | "hvac" | "fire", pts: V3[], label?: string, underground = false, level: LevelKey = "level1") =>
     b.run({ id, layer, kind: layer, pts, phase: "mep", level, label, underground, width: layer === "hvac" ? 3 : undefined });
-  run("E-1", "electrical", [[44, 0.95, 5], [44, 0.95, 10.2], [3, 0.95, 10.2], [3, 26, 10.2], [44, 26, 10.2]], "Lighting trunk");
-  run("E-2", "electrical", [[44, 0.95, 5], [44, 0.95, 1.5], [1.1, 0.95, 1.5], [1.1, 26.5, 1.5]], "Receptacle circuit");
+  run("E-1", "electrical", [[44, 0.95, 5], [44, 0.95, 10.2], [3, 0.95, 10.2], [3, 26, 10.2], [44, 26, 10.2]], "Lighting Trunk");
+  run("E-2", "electrical", [[44, 0.95, 5], [44, 0.95, 1.5], [1.1, 0.95, 1.5], [1.1, 26.5, 1.5]], "Receptacle Circuit");
   b.device({ id: "EP-MDP", layer: "electrical", kind: "electrical", at: [44, 0.95, 5], shape: "panel", label: "400A MDP", phase: "mep", level: "level1" });
   for (let i = 0; i < 9; i++) b.device({ id: `EL-${i}`, layer: "electrical", kind: "electrical", at: [5 + i * 4.8, 14.5, 10.2], shape: "light", phase: "mep", level: "level1" });
-  run("P-SUP", "plumbing", [[39, -30, -2.2], [39, 26.6, -2.2], [39, 26.6, 3]], '1-1/2" water service', true, "foundation");
-  run("P-WST", "plumbing", [[39.5, 26, -1.8], [39.5, 50, -2.6]], '4" waste', true, "foundation");
+  run("P-SUP", "plumbing", [[39, -30, -2.2], [39, 26.6, -2.2], [39, 26.6, 3]], '1-1/2" Water Service', true, "foundation");
+  run("P-WST", "plumbing", [[39.5, 26, -1.8], [39.5, 50, -2.6]], '4" Waste', true, "foundation");
   b.device({ id: "PF-SINK", layer: "plumbing", kind: "plumbing", at: [39, 26.6, 3], shape: "fixture", label: "Sink", phase: "mep", level: "level1" });
-  run("H-1", "hvac", [[3, 14.5, 9.8], [45, 14.5, 9.8]], "Supply trunk");
+  run("H-1", "hvac", [[3, 14.5, 9.8], [45, 14.5, 9.8]], "Supply Trunk");
   for (const x of [6, 18, 30, 42]) run(`H-${x}`, "hvac", [[x, 14.5, 9.8], [x, 22, 9.8]]);
   b.device({ id: "HU-AHU", layer: "hvac", kind: "hvac", at: [24, 14.5, 9.8], shape: "unit", label: "AHU-1", phase: "mep", level: "level1" });
-  run("FP-1", "fire", [[2, 14.5, 10.6], [46, 14.5, 10.6]], "Sprinkler main");
+  run("FP-1", "fire", [[2, 14.5, 10.6], [46, 14.5, 10.6]], "Sprinkler Main");
   for (let i = 0; i < 8; i++) b.device({ id: `FH-${i}`, layer: "fire", kind: "fire", at: [4 + i * 5.8, 14.5, 10.6], shape: "head", phase: "mep", level: "level1" });
 
   b.callouts.push(
     { id: "CO-1", at: [0.3, 14, -3], dx: -120, dy: 54, text: "Footing 24\" × 12\"", sub: "#5 @ 12\" o.c." },
     { id: "CO-2", at: [24, 14.5, 9.8], dx: 70, dy: -70, text: "AHU-1 · 5-ton", sub: "supply 2,000 CFM" },
-    { id: "CO-3", at: [44, 0.95, 5], dx: 70, dy: 70, text: "400A main panel", sub: "emergency generator tie" },
+    { id: "CO-3", at: [44, 0.95, 5], dx: 70, dy: 70, text: "400A Main Panel", sub: "emergency generator tie" },
   );
   b.stress.push(
-    { id: "SP-1", at: [0.3, 0.3, 0.2], ksi: 2.6, elementId: "C-A1", label: "Column base" },
-    { id: "SP-2", at: [24, 14, H - 0.4], ksi: 4.4, elementId: "B-L1-MID", label: "Roof beam midspan" },
-    { id: "SP-3", at: [19, -5, 9.8], ksi: 3.4, elementId: "CAN-01", label: "Canopy cantilever" },
-    { id: "SP-4", at: [W, 0, H], ksi: 3.0, elementId: "R-01", label: "Roof corner uplift" },
+    { id: "SP-1", at: [0.3, 0.3, 0.2], ksi: 2.6, elementId: "C-A1", label: "Column Base" },
+    { id: "SP-2", at: [24, 14, H - 0.4], ksi: 4.4, elementId: "B-L1-MID", label: "Roof Beam Midspan" },
+    { id: "SP-3", at: [19, -5, 9.8], ksi: 3.4, elementId: "CAN-01", label: "Canopy Cantilever" },
+    { id: "SP-4", at: [W, 0, H], ksi: 3.0, elementId: "R-01", label: "Roof Corner Uplift" },
   );
   b.rooms.push(
     { id: "RM-1", name: "WAITING", at: [7, 6], area: 80, level: "level1" },

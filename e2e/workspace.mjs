@@ -1,23 +1,34 @@
 /**
  * e2e/workspace.mjs
  *
- * WHAT   Browser tests of workspace behaviour: every palette tab and explorer tab; the eight ribbon tabs, panel
+ * WHAT   Browser tests of workspace behaviour: every palette tab and explorer tab; the nine ribbon tabs, panel
  *        collapse and every ribbon command; the command line and AI proposals (Accept / Reject); keyboard
- *        shortcuts; the context menu; document tabs; the timeline; sheets; and the Settings draft / Apply /
- *        persistence flow and the Connect dialog.
+ *        shortcuts; the context menu; document tabs; the timeline; sheets; the Model Explorer keeping its scroll
+ *        position; the room view (in by a double-click on a room's name, look, room to room, Esc out); and the Settings draft / Apply / persistence flow and the Connect dialog.
  * FOR    `npm run e2e:workspace` (or `npm run e2e`). Needs the app running (BASE, default
  *        http://localhost:3000) and a Chromium. Screenshots go to e2e/.shots (git-ignored).
  * DEBUG  - A ribbon command check fails: confirm the command exists in lib/commands.ts and the button in
  *          ribbon.config.ts.
- *        - Selection checks read the Properties header ("N elements", "1 selected", "No selection") because
+ *        - Selection checks read the Properties header ("N elements", "1 selected", "No Selection") because
  *          modifier clicks must be sent with keyboard.down / up, not page.mouse.click({ modifiers }).
  *        - A check times out waiting for a data-testid: the id is set on the component (search the repo for it);
  *          open() and ready() in the harness wait until the workspace is mounted and hydrated.
+ *        - Many checks fail after the ribbon smoke test: a window it hid (View → Panels) or work it saved (Site from
+ *          Map) came back on reload. Both are saved, so every page load here starts clean (bs.work.*, bs.layout).
  *
  * Author: Giordano Bertin-Maurice
  * Copyright (c) 2026 Giordano Bertin-Maurice. All rights reserved.
  */
 import { browser, check, clickViewport, eq, finish, gotoSettings, has, open, page, ready, shot, sleep, BASE } from "./harness.mjs";
+
+// saved project work and the window arrangement persist: start every page load from the sample and the standard windows
+await page.addInitScript(() => {
+  try {
+    if (!sessionStorage.getItem("e2e-keep")) for (const k of Object.keys(localStorage)) if (k.startsWith("bs.work") || k === "bs.layout" || k === "bs.interfaces") localStorage.removeItem(k);
+  } catch {
+    /* storage blocked */
+  }
+});
 
 const PALETTES = ["properties", "health", "compliance", "cost", "comments", "issues", "simulation", "stress-test", "clash", "ai-analysis", "council"];
 const BODY_ID = { "stress-test": "palette-stress", "ai-analysis": "palette-ai" };
@@ -34,16 +45,16 @@ await check("palette tabs: each opens a non-empty body and mirrors ?panel=", asy
   }
 });
 
-await check("explorer tabs: model / layers / levels / library", async () => {
-  for (const [name, id] of [["Layers", "layers-table"], ["Levels", "levels-list"], ["Library", "library"], ["Model", "model-tree"]]) {
-    await page.getByTestId("explorer").getByRole("tab", { name }).click();
+await check("explorer tabs: model / views / layers / levels / library", async () => {
+  for (const [name, id] of [["Views", "views-list"], ["Layers", "layers-table"], ["Levels", "levels-list"], ["Library", "library"], ["Model", "model-tree"]]) {
+    await page.getByTestId("explorer").getByRole("tab", { name, exact: true }).click();
     await page.getByTestId(id).waitFor({ timeout: 5000 });
   }
 });
 
-await check("ribbon: all eight tabs render labelled buttons", async () => {
+await check("ribbon: all nine tabs render labelled buttons", async () => {
   await open("/demo");
-  for (const t of ["Home", "Insert", "Annotate", "Analyze", "Collaborate", "AI", "View", "Manage"]) {
+  for (const t of ["Home", "Insert", "Systems", "Annotate", "Analyze", "Collaborate", "AI", "View", "Manage"]) {
     await page.getByRole("tab", { name: t, exact: true }).click();
     const n = await page.getByTestId("ribbon").getByRole("button").count();
     if (n < 6) throw new Error(`${t} tab has only ${n} buttons`);
@@ -54,45 +65,64 @@ await check("ribbon: all eight tabs render labelled buttons", async () => {
 });
 
 await check("ribbon smoke: every button on every tab, including inside collapsed-panel flyouts, never crashes the workspace", async () => {
-  const tabs = ["Home", "Insert", "Annotate", "Analyze", "Collaborate", "AI", "View", "Manage"];
+  const tabs = ["Home", "Insert", "Systems", "Annotate", "Analyze", "Collaborate", "AI", "View", "Manage"];
   let clicked = 0, viaFlyout = 0;
   const reset = async (t) => { await open("/demo"); await page.getByRole("tab", { name: t, exact: true }).click(); };
-  const settle = async (t, label) => {
-    await sleep(30);
-    if (!new URL(page.url()).pathname.startsWith("/demo")) { await reset(t); return false; }
+  const settle = async (t, label, command = "") => {
+    // a button that opens a settings page (a /settings link, or a command such as SHORTCUTS): let it open, then come back
+    if (command.startsWith("/")) await page.waitForFunction((p) => location.pathname === p, command.split("?")[0], { timeout: 10000 }).catch(() => {});
+    else await page.waitForFunction(() => !location.pathname.startsWith("/demo"), null, { timeout: 150 }).catch(() => {});
+    if (!new URL(page.url()).pathname.startsWith("/demo") || (await page.getByTestId("settings-frame").count())) { await reset(t); return false; }
     await page.keyboard.press("Escape");
     if ((await page.getByTestId("workspace").count()) === 0) throw new Error(`workspace vanished after clicking "${label}" on ${t}`);
     if ((await page.getByTestId("ribbon").count()) === 0) throw new Error(`ribbon vanished after clicking "${label}" on ${t}`);
     return true;
+  };
+  // a settings page can open late (its code loads on first use): before each click, come back from one if it did
+  const guard = async (t) => {
+    if (!new URL(page.url()).pathname.startsWith("/demo") || (await page.getByTestId("settings-frame").count())) await reset(t);
+  };
+  const clickFolded = async (t, c) => {
+    await guard(t);
+    try {
+      await page.getByTestId("ribbon-collapsed").nth(c).click({ timeout: 5000 });
+    } catch {
+      await guard(t);
+      await page.keyboard.press("Escape");
+      await page.getByTestId("ribbon-collapsed").nth(c).click({ timeout: 5000 });
+    }
   };
   for (const t of tabs) {
     await reset(t);
     // 1. everything directly in the strip (collapsed buttons just open and close their flyout)
     const n = await page.getByTestId("ribbon").getByRole("button").count();
     for (let i = 0; i < n; i++) {
+      await guard(t);
       const btn = page.getByTestId("ribbon").getByRole("button").nth(i);
       const label = ((await btn.getAttribute("aria-label")) || (await btn.innerText()) || `#${i}`).trim().replace(/\s+/g, " ");
+      const command = (await btn.getAttribute("data-command")) ?? "";
       try { await btn.click({ timeout: 2500, force: true }); } catch { continue; }
       clicked++;
-      await settle(t, label);
+      await settle(t, label, command);
     }
     // 2. everything inside collapsed panels
     const folded = await page.getByTestId("ribbon-collapsed").count();
     for (let c = 0; c < folded; c++) {
-      await page.getByTestId("ribbon-collapsed").nth(c).click();
+      await clickFolded(t, c);
       const items = await page.getByTestId("ribbon-flyout").getByRole("button").count();
       if (items < 2) throw new Error(`flyout ${c} on ${t} has only ${items} buttons`);
       await page.keyboard.press("Escape");
       for (let j = 0; j < items; j++) {
+        await guard(t);
         if ((await page.getByTestId("ribbon-collapsed").count()) <= c) break;
-        await page.getByTestId("ribbon-collapsed").nth(c).click();
+        await clickFolded(t, c);
         const b = page.getByTestId("ribbon-flyout").getByRole("button").nth(j);
         const label = ((await b.getAttribute("aria-label")) || (await b.innerText()) || `#${j}`).trim().replace(/\s+/g, " ");
+        const command = (await b.getAttribute("data-command")) ?? "";
         try { await b.click({ timeout: 2500, force: true }); } catch { await page.keyboard.press("Escape"); continue; }
         viaFlyout++;
         if (await page.getByTestId("ribbon-flyout").count()) throw new Error(`flyout stayed open after running "${label}"`);
-        await settle(t, label);
-        if (!(await settle(t, label)) ) { /* navigated away: already reset */ }
+        if (await settle(t, label, command)) await settle(t, label);
       }
     }
   }
@@ -108,7 +138,8 @@ await check("ribbon collapse: Home at 1440 folds right-most panels, widening unf
   has(collapsed1440.join(","), "measure");
   const over = await page.getByTestId("ribbon").evaluate((el) => el.scrollWidth - el.clientWidth);
   if (over > 1) throw new Error("ribbon overflows by " + over);
-  await page.setViewportSize({ width: 2600, height: 900 });
+  // Home is the widest tab (Draw, Modify, Building, Structure, MEP, Properties, Layers, Measure, Help): all of it fits at 3400
+  await page.setViewportSize({ width: 3400, height: 900 });
   await page.waitForFunction(() => !document.querySelector('[data-testid="ribbon"]').getAttribute("data-collapsed"), null, { timeout: 5000 });
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.waitForFunction((n) => document.querySelector('[data-testid="ribbon"]').getAttribute("data-collapsed").split(",").length > n, collapsed1440.length, { timeout: 5000 });
@@ -201,7 +232,7 @@ await check("F8 toggles ORTHO and the status bar reflects it", async () => {
 });
 
 await check("right-click on the viewport opens the context menu; Escape closes it", async () => {
-  await page.getByTestId("scene").click({ button: "right", position: { x: 500, y: 300 } });
+  await clickViewport(0.5, 0.6, { button: "right" });
   await page.getByRole("menu").first().waitFor({ timeout: 3000 });
   const items = await page.getByRole("menuitem").count();
   if (items < 4) throw new Error(`context menu has only ${items} items`);
@@ -212,12 +243,12 @@ await check("right-click on the viewport opens the context menu; Escape closes i
 
 await check("document tabs switch projects (?project=) and back", async () => {
   await open("/demo");
-  await page.getByTestId("doc-tabs").getByRole("tab", { name: /Clinic_Phase1/ }).click();
-  await page.waitForFunction(() => location.search.includes("project=clinic-phase1-antigua"));
-  has(await page.getByTestId("title").innerText(), "Clinic");
-  await shot("e2e-clinic");
+  await page.getByTestId("doc-tabs").getByRole("tab", { name: /Cottage_2BR/ }).click();
+  await page.waitForFunction(() => location.search.includes("project=cottage-2br-1ba"));
+  has(await page.getByTestId("title").innerText(), "Cottage");
+  await shot("e2e-cottage");
   await page.getByTestId("doc-tabs").getByRole("tab", { name: /Residence_2BR/ }).click();
-  await page.waitForFunction(() => location.search.includes("project=residence-2br-miami") || !location.search.includes("project=clinic"));
+  await page.waitForFunction(() => location.search.includes("project=residence-2br-miami") || !location.search.includes("project=cottage"));
   has(await page.getByTestId("title").innerText(), "Residence");
 });
 
@@ -233,7 +264,7 @@ await check("Start tab shows recent projects and templates", async () => {
 await check("timeline: presets set a window, summary + cost palette follow, Clear removes it", async () => {
   await open("/demo?panel=cost");
   await page.getByTestId("timeline").waitFor();
-  const presets = page.getByTestId("timeline").getByRole("group", { name: "Time window presets" }).getByRole("button");
+  const presets = page.getByTestId("timeline").getByRole("group", { name: "Time Window Presets" }).getByRole("button");
   const n = await presets.count();
   if (n < 3) throw new Error(`only ${n} timeline presets`);
   await presets.nth(1).click();
@@ -241,7 +272,7 @@ await check("timeline: presets set a window, summary + cost palette follow, Clea
   await page.getByTestId("gantt-window").waitFor();
   has(await page.getByTestId("window-summary").innerText(), "Day");
   await shot("e2e-timeline");
-  await page.getByTestId("window-summary").getByRole("button", { name: "Clear window" }).click();
+  await page.getByTestId("window-summary").getByRole("button", { name: "Clear Window" }).click();
   await page.getByTestId("window-summary").waitFor({ state: "detached" });
 });
 
@@ -306,7 +337,7 @@ await check("settings draft: theme previews live, Close discards, Apply persists
 await check("high-contrast + UI scale apply and restore", async () => {
   await gotoSettings("/settings/display");
   await page.getByLabel("Theme", { exact: true }).selectOption("hc");
-  await page.getByLabel("UI scale", { exact: true }).selectOption("125");
+  await page.getByLabel("UI Scale", { exact: true }).selectOption("125");
   await page.waitForFunction(() => document.documentElement.getAttribute("data-theme") === "hc");
   const fs = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
   eq(fs, "20px");
@@ -317,7 +348,7 @@ await check("high-contrast + UI scale apply and restore", async () => {
 await check("reset appearance to dark/100% for the remaining checks", async () => {
   await gotoSettings("/settings/display");
   await page.getByLabel("Theme", { exact: true }).selectOption("dark");
-  await page.getByLabel("UI scale", { exact: true }).selectOption("100");
+  await page.getByLabel("UI Scale", { exact: true }).selectOption("100");
   await page.getByRole("radio", { name: "Accent #4C8DFF" }).click();
   await page.getByTestId("settings-apply").click();
   await sleep(200);
@@ -325,7 +356,7 @@ await check("reset appearance to dark/100% for the remaining checks", async () =
 
 await check("connect Kimi from the chip: modal over workspace, test, connect, chip becomes 3 agents", async () => {
   await open("/demo");
-  has(await page.getByTestId("agents-chip").innerText(), "2 agents");
+  has(await page.getByTestId("agents-chip").innerText(), "2 Agents");
   await page.getByTestId("agents-chip").click();
   await page.waitForFunction(() => location.pathname === "/settings/integrations");
   await page.getByTestId("agent-grid").waitFor();
@@ -344,7 +375,7 @@ await check("connect Kimi from the chip: modal over workspace, test, connect, ch
   if (html.includes("sk-test-1234567890abcdef")) throw new Error("API key leaked into the DOM");
   await page.getByTestId("settings-close").click();
   await page.waitForFunction(() => location.pathname === "/demo");
-  has(await page.getByTestId("agents-chip").innerText(), "3 agents");
+  has(await page.getByTestId("agents-chip").innerText(), "3 Agents");
 });
 
 await check("manage Kimi: disconnect returns the chip to 2 agents", async () => {
@@ -356,11 +387,11 @@ await check("manage Kimi: disconnect returns the chip to 2 agents", async () => 
   await page.waitForFunction(() => location.pathname === "/settings/integrations");
   await page.getByTestId("settings-close").click();
   await page.waitForFunction(() => location.pathname === "/demo");
-  has(await page.getByTestId("agents-chip").innerText(), "2 agents");
+  has(await page.getByTestId("agents-chip").innerText(), "2 Agents");
 });
 
-await check("settings: all eleven panes render without errors", async () => {
-  const panes = ["general", "units", "grid-snap", "display", "rendering", "shortcuts", "ai", "integrations", "notifications", "permissions", "account"];
+await check("settings: all thirteen panes render without errors", async () => {
+  const panes = ["general", "units", "grid-snap", "display", "rendering", "shortcuts", "ai", "integrations", "notifications", "permissions", "account", "help", "buttons"];
   for (const p of panes) {
     const r = await page.goto(BASE + `/settings/${p}`, { waitUntil: "networkidle" });
     if (r.status() !== 200) throw new Error(`/settings/${p} -> ${r.status()}`);
@@ -372,7 +403,7 @@ await check("settings: all eleven panes render without errors", async () => {
 
 await check("app menu opens with project actions", async () => {
   await open("/demo");
-  await page.getByRole("button", { name: "Application menu" }).click();
+  await page.getByRole("button", { name: "Application Menu" }).click();
   await page.getByRole("menu").first().waitFor();
   await shot("e2e-appmenu");
   await page.keyboard.press("Escape");
@@ -491,6 +522,105 @@ await check("Esc closes only the top-most layer: the Connect dialog first, then 
   eq(await page.getByTestId("settings-frame").count(), 1, "settings should still be open");
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => location.pathname === "/demo");
+});
+
+const must = (cond, msg) => {
+  if (!cond) throw new Error(msg);
+};
+await check("the room view: double-click a room's name to stand inside, look around, go room to room, Esc to leave", async () => {
+  await open("/demo?view=2d");
+  const label = () => page.locator('[aria-label="Viewport Label"]').innerText();
+  await page.getByTestId("room-label-2d").filter({ hasText: "BEDROOM 1" }).dblclick();
+  await page.getByTestId("room-bar").waitFor({ timeout: 5000 });
+  has(await label(), "Inside · BEDROOM 1", "the view is inside the room:");
+  eq(await page.getByTestId("room-select").inputValue(), "RM-3", "the bar names the room:");
+  // drag to look around: what is on screen changes
+  const before = await page.getByTestId("scene").innerHTML();
+  const b = await page.getByTestId("viewport").boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2 - 200, b.y + b.height / 2 + 60, { steps: 6 });
+  await page.mouse.up();
+  await sleep(200);
+  must((await page.getByTestId("scene").innerHTML()) !== before, "dragging turns the view");
+  has(await label(), "Inside", "and stays inside (a drag never moves walls):");
+  // the next room, then a marker
+  await page.getByTestId("room-bar").getByRole("button", { name: "Next Room" }).click();
+  await sleep(700);
+  eq(await page.getByTestId("room-select").inputValue(), "RM-4", "Next Room:");
+  const marker = page.getByTestId("room-marker").first();
+  if (await marker.count()) {
+    const to = await marker.getAttribute("data-room");
+    await marker.click();
+    await sleep(700);
+    eq(await page.getByTestId("room-select").inputValue(), to, "a click on a room's marker goes there:");
+  }
+  await page.keyboard.press("Escape");
+  await sleep(200);
+  eq(await page.getByTestId("room-bar").count(), 0, "Esc leaves the room:");
+  // the Room to Room button in the top bar lists the rooms by building and storey (this house has two storeys)
+  await page.getByTestId("room-to-room").click();
+  const menu = page.getByTestId("room-to-room-menu");
+  // headings are drawn in capitals (CSS), so compare without case
+  const text = (await menu.innerText()).toLowerCase();
+  has(text, "residence_2br_miami", "the building's name heads its rooms:");
+  has(text, "level 1", "a storey heading:");
+  has(text, "level 2", "and the one above:");
+  must(text.indexOf("level 1") < text.indexOf("level 2") && text.indexOf("stair hall") < text.indexOf("study"), "storeys go from the ground up");
+  await menu.getByRole("menuitem", { name: /STUDY/ }).click();
+  await page.getByTestId("room-bar").waitFor({ timeout: 5000 });
+  has(await label(), "Inside · STUDY", "a room picked from the menu:");
+  eq(await page.getByTestId("room-to-room").getAttribute("data-inside"), "true", "the button is lit inside a room:");
+  eq(await page.getByTestId("building-select").count(), 0, "one building: no building picker:");
+  await page.getByTestId("room-to-room").click();
+  await page.getByRole("menuitem", { name: "Leave the Room" }).click();
+  await sleep(200);
+  eq(await page.getByTestId("room-bar").count(), 0, "Leave the Room in the menu:");
+  must(!(await label()).includes("Inside"), "back outside");
+  // a double-click on a room's name in 3D goes in too
+  const name3d = page.getByTestId("room-label-3d").last();
+  const name = (await name3d.locator("text").textContent()).trim();
+  await name3d.locator("rect").dblclick({ force: true });
+  await page.getByTestId("room-bar").waitFor({ timeout: 5000 });
+  has(await label(), `Inside · ${name}`, "from the 3D names as well:");
+});
+
+await check("the Model Explorer keeps its scroll position when a node is opened or closed, and across tabs", async () => {
+  await open("/demo");
+  const tree = page.getByTestId("model-tree");
+  const state = () => tree.evaluate((e) => {
+    const s = e.closest(".overflow-y-auto");
+    return { top: s.scrollTop, max: s.scrollHeight - s.clientHeight };
+  });
+  // open nodes until the tree is taller than its window
+  for (let i = 0; i < 12 && (await state()).max < 160; i++) await tree.locator('[role="treeitem"][aria-expanded="false"] button').first().click();
+  if ((await state()).max < 160) throw new Error(`the tree does not scroll (${JSON.stringify(await state())})`);
+  await tree.evaluate((e) => (e.closest(".overflow-y-auto").scrollTop = 80));
+  await sleep(60);
+  // a closed node on screen: opening it makes the tree taller, closing it gives the height back
+  const name = await tree.evaluate((e) => {
+    const box = e.closest(".overflow-y-auto").getBoundingClientRect();
+    const r = [...e.querySelectorAll('[role="treeitem"][aria-expanded="false"]')].find((x) => {
+      const b = x.getBoundingClientRect();
+      return b.top > box.top + 10 && b.bottom < box.bottom - 10;
+    });
+    return r ? r.textContent.replace(/\[\d+\]/, "").trim() : null;
+  });
+  if (!name) throw new Error("no closed node on screen");
+  const row = tree.locator('[role="treeitem"]', { hasText: name }).first();
+  await row.locator("button").first().click();
+  await sleep(80);
+  eq(await row.getAttribute("aria-expanded"), "true", `${name} opened:`);
+  eq((await state()).top, 80, `after opening ${name} the tree stays where it was scrolled:`);
+  await row.locator("button").first().click();
+  await sleep(80);
+  eq((await state()).top, 80, `after closing ${name} again:`);
+  // the tabs share one scroll area: the tree keeps its place across a visit to a short tab
+  await page.getByTestId("explorer").getByRole("tab", { name: "Layers" }).click();
+  await sleep(80);
+  await page.getByTestId("explorer").getByRole("tab", { name: "Model" }).click();
+  await sleep(80);
+  eq((await state()).top, 80, "after the Layers tab and back:");
 });
 
 await finish();

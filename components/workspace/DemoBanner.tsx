@@ -3,7 +3,7 @@
  *
  * WHAT   The accent-coloured strip at the top of /demo: "You're in the demo - Start free to save", with a
  *        button that opens the Start-free dialog.
- * FOR    Tells visitors that edits are not saved. It is mounted only in demo mode (Workspace.tsx), which also
+ * FOR    Tells visitors that the demo has no account: work is saved in this browser only. It is mounted only in demo mode (Workspace.tsx), which also
  *        sets --h-banner so the rest of the layout moves down.
  *
  * Author: Giordano Bertin-Maurice
@@ -21,10 +21,10 @@ export function DemoBanner() {
     <div className="flex h-[var(--h-banner)] shrink-0 items-center justify-center gap-3 bg-accent px-3 text-[0.75rem] font-medium text-on-accent" role="note" data-testid="demo-banner">
       <Icon name="info" size={13} />
       <span>
-        You&apos;re in the demo <span className="opacity-70">—</span> <b className="font-semibold">Start free to save</b>. Edits aren&apos;t saved.
+        You&apos;re in the demo <span className="opacity-70">—</span> your work saves in this browser. <b className="font-semibold">Start free</b> to keep it in your account and share it.
       </span>
       <button onClick={() => ws.getState().openModal("start-free")} className="rounded-full bg-white/20 px-3 py-px text-[0.6875rem] font-semibold hover:bg-white/30">
-        Start free
+        Start Free
       </button>
     </div>
   );

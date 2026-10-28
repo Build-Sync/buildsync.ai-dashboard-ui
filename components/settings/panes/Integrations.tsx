@@ -76,7 +76,7 @@ export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
         Connect external AI agents to BuildSync. Agents receive the model context you allow and can only <b className="text-t1">propose</b> changes. Every edit is previewed and needs your approval. Engineering output stays advisory until a licensed PE signs off.
       </p>
 
-      <Group title="AI agents" aside={<span className="text-[0.6875rem] text-t3">{connected.length} connected</span>}>
+      <Group title="AI Agents" aside={<span className="text-[0.6875rem] text-t3">{connected.length} connected</span>}>
         <ul className="grid gap-3 md:grid-cols-2" data-testid="agent-grid">
           {AGENT_ORDER.map((id) => {
             const a = agents.find((x) => x.id === id)!;
@@ -93,7 +93,7 @@ export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
                     <div className="text-[0.6875rem] text-t3">{m.vendor}</div>
                   </div>
                   <Pill tone={a.connected ? "ok" : "neutral"} className="shrink-0">
-                    <span className="size-1.5 rounded-full bg-current" /> {a.connected ? "Connected" : "Not connected"}
+                    <span className="size-1.5 rounded-full bg-current" /> {a.connected ? "Connected" : "Not Connected"}
                   </Pill>
                 </div>
                 <p className="mt-2.5 text-[0.75rem] leading-snug text-t2">{m.description}</p>
@@ -131,7 +131,7 @@ export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
         </ul>
       </Group>
 
-      <Group title="Route tasks to agents">
+      <Group title="Route Tasks to Agents">
         <div className="overflow-hidden rounded-lg border border-line" data-testid="routing-table">
           <table className="w-full text-[0.8125rem]">
             <thead className="bg-panel-alt">
@@ -149,7 +149,7 @@ export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
                     <td className="px-4 py-2.5 text-t1">{TASK_LABEL[t]}</td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2.5">
-                        <Select<AgentId | "active"> label={`Agent for ${TASK_LABEL[t]}`} className="!min-w-[11rem]" value={val} onChange={(v) => set((d) => (d.routing[t] = v))} options={[{ value: "active", label: "Active agent" }, ...AGENT_ORDER.map((id) => ({ value: id as AgentId | "active", label: AGENT_META[id].name + (agents.find((a) => a.id === id)?.connected ? "" : " (not connected)") }))]} />
+                        <Select<AgentId | "active"> label={`Agent for ${TASK_LABEL[t]}`} className="!min-w-[11rem]" value={val} onChange={(v) => set((d) => (d.routing[t] = v))} options={[{ value: "active", label: "Active Agent" }, ...AGENT_ORDER.map((id) => ({ value: id as AgentId | "active", label: AGENT_META[id].name + (agents.find((a) => a.id === id)?.connected ? "" : " (Not Connected)") }))]} />
                         {offline && <Pill tone="warn">Falls back to active agent</Pill>}
                       </div>
                     </td>
@@ -165,13 +165,13 @@ export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
         <div className="rounded-xl border border-line bg-panel-alt p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-[0.8125rem] font-medium text-t1">Expose this project as an MCP server</div>
+              <div className="text-[0.8125rem] font-medium text-t1">Expose This Project as an MCP Server</div>
               <p className="mt-0.5 text-[0.75rem] text-t3">Lets Claude, ChatGPT or Kimi read the model, run checks and propose edits from their own app.</p>
             </div>
-            <Switch label="Expose this project as an MCP server" checked={s.mcp.enabled} onChange={(v) => set((d) => (d.mcp.enabled = v))} />
+            <Switch label="Expose This Project as an MCP Server" checked={s.mcp.enabled} onChange={(v) => set((d) => (d.mcp.enabled = v))} />
           </div>
           <div className={`mt-3 flex gap-2 transition-opacity ${s.mcp.enabled ? "" : "opacity-45"}`}>
-            <input readOnly className="input mono" value={mcpUrl} aria-label="MCP server URL" data-testid="mcp-url" />
+            <input readOnly className="input mono" value={mcpUrl} aria-label="MCP Server URL" data-testid="mcp-url" />
             <button
               className="btn shrink-0"
               disabled={!s.mcp.enabled}
@@ -187,7 +187,7 @@ export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
         </div>
       </Group>
 
-      <Group title="Other integrations" aside={<Pill tone="neutral">Phase 2</Pill>}>
+      <Group title="Other Integrations" aside={<Pill tone="neutral">Phase 2</Pill>}>
         <ul className="grid gap-3 md:grid-cols-2">
           {OTHER_INTEGRATIONS.map((o) => (
             <li key={o.id} className="flex items-center gap-3 rounded-xl border border-line bg-panel-alt p-3">
@@ -206,7 +206,7 @@ export function IntegrationsPane({ agentId }: { agentId?: AgentId }) {
                   app.getState().toast(`We'll let you know when ${o.name} is ready`, "info");
                 }}
               >
-                {notify.includes(o.id) ? "On the list" : "Notify me"}
+                {notify.includes(o.id) ? "On the List" : "Notify Me"}
               </button>
             </li>
           ))}

@@ -3,7 +3,8 @@
  *
  * WHAT   The global (cross-project) client state: profile, settings and the unapplied settings draft, AI agents
  *        and the active agent, seat, team members, command-line history, toasts, open document tabs and unsaved
- *        flags.
+ *        flags, and the guided tour (`tour`, the step on screen) and a one-off `spotlight` on a control (the Button
+ *        Guide's "show me where"). Both live here, not in a project, so Settings can start them for the workspace.
  * FOR    Created once per browser by <AppStoreProvider>, never as a module singleton, so the server never
  *        shares state between requests. Only the non-secret settings are saved (localStorage, key bs.settings);
  *        keys, agents and project data never are.
@@ -22,7 +23,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { AGENT_META, initialAgents } from "../agents";
-import { CLINIC_PROJECT_ID, DEMO_PROJECT_ID, INITIAL_MEMBERS } from "../mock-data";
+import { COTTAGE_PROJECT_ID, DEMO_PROJECT_ID, INITIAL_MEMBERS } from "../mock-data";
 import {
   cloneSettings,
   DEFAULT_SETTINGS,
@@ -30,7 +31,7 @@ import {
   SETTINGS_STORAGE_KEY,
   type Settings,
 } from "../settings";
-import type { Agent, AgentId, AuthMethod, HistoryKind, HistoryLine, Member, Role, Seat, Toast } from "../types";
+import type { Agent, AgentId, AuthMethod, HistoryKind, HistoryLine, Member, RibbonTabId, Role, Seat, Toast } from "../types";
 import { uid } from "../utils";
 
 /* Global (cross-project) client state: settings, agents, activity log, toasts, open tabs.
@@ -64,6 +65,10 @@ export interface AppState {
   dirty: Record<string, boolean>;
   untitledCounter: number;
   hydrated: boolean;
+  /** the guided tour (lib/tour.ts): the step on screen, or null when it is not running */
+  tour: { step: number } | null;
+  /** one control highlighted on screen with a note (the Button Guide's "show me where"); null = none */
+  spotlight: Spotlight | null;
 
   toast: (text: string, tone?: Toast["tone"]) => void;
   dismissToast: (id: string) => void;
@@ -82,6 +87,13 @@ export interface AppState {
   newUntitled: () => string;
   setDirty: (id: string, v: boolean) => void;
 
+  /** start the tour at a step (0 = the welcome) */
+  startTour: (step?: number) => void;
+  setTourStep: (step: number) => void;
+  /** end the tour; `how` is remembered so the first-run question is not asked again */
+  endTour: (how: "done" | "skipped") => void;
+  setSpotlight: (s: Spotlight | null) => void;
+
   setActiveAgent: (id: AgentId) => void;
   connectAgent: (id: AgentId, data: { maskedKey?: string; model: string; method: AuthMethod; baseUrl?: string; scopes: string[]; name?: string }) => void;
   disconnectAgent: (id: AgentId) => void;
@@ -92,6 +104,19 @@ export interface AppState {
   removeMember: (id: string) => void;
   setMemberRole: (id: string, role: Role) => void;
 }
+
+/** A control to highlight: a CSS selector, the ribbon tab to show first, and the note beside it. */
+export interface Spotlight {
+  selector: string;
+  /** a selector to try when the first one is not on screen (a ribbon panel folded into a flyout) */
+  fallback?: string;
+  tab?: RibbonTabId;
+  title: string;
+  body: string;
+}
+
+/** localStorage key that remembers the tour was taken or skipped. */
+export const TOUR_KEY = "bs.tour";
 
 /** The global store. */
 export type AppStore = StoreApi<AppState>;
@@ -132,10 +157,13 @@ export function createAppStore(): AppStore {
           { id: "h0", kind: "info", text: "BuildSync AI ready. Type a command (SECTION, 2D, STRESS, SETTINGS…) or ask in plain English." },
         ],
         toasts: [],
-        tabs: [DEMO_PROJECT_ID, CLINIC_PROJECT_ID],
+        // the two sample houses open side by side; the clinic is on the Start tab
+        tabs: [DEMO_PROJECT_ID, COTTAGE_PROJECT_ID],
         dirty: {},
         untitledCounter: 0,
         hydrated: false,
+        tour: null,
+        spotlight: null,
 
         toast: (text, tone = "ok") =>
           set((s) => ({ toasts: [...s.toasts.slice(-3), { id: uid("toast"), text, tone }] })),
@@ -187,6 +215,18 @@ export function createAppStore(): AppStore {
           return id;
         },
         setDirty: (id, v) => set((s) => (!!s.dirty[id] === v ? {} : { dirty: { ...s.dirty, [id]: v } })),
+
+        startTour: (step = 0) => set({ tour: { step }, spotlight: null }),
+        setTourStep: (step) => set({ tour: { step } }),
+        endTour: (how) => {
+          try {
+            localStorage.setItem(TOUR_KEY, how);
+          } catch {
+            /* blocked storage: the first-run question may be asked again next time */
+          }
+          set({ tour: null });
+        },
+        setSpotlight: (spotlight) => set({ spotlight }),
 
         setActiveAgent: (id) => set({ activeAgentId: id }),
         connectAgent: (id, data) =>

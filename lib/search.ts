@@ -117,4 +117,4 @@ export function searchAll(query: string, scene: Scene | null, limit = 9): Search
 }
 
 /** Example queries shown when the box is empty. */
-export const SEARCH_SUGGESTIONS = ["STRESS", "Section cut", "2D plan", "Compliance", "Connectors", "Units", "Theme"];
+export const SEARCH_SUGGESTIONS = ["STRESS", "Section Cut", "2D Plan", "Compliance", "Connectors", "Units", "Theme"];

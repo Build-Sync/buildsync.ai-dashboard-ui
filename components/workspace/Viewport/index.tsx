@@ -22,7 +22,10 @@ export function ViewportArea() {
   const sheet = sheets.find((s) => s.id === tab);
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {sheet ? <SheetView sheet={sheet} /> : <ModelViewport />}
+      {/* what Export → PDF prints: only the drawing (app/globals.css hides everything else when printing) */}
+      <div className="flex min-h-0 flex-1 flex-col" data-print-area>
+        {sheet ? <SheetView sheet={sheet} /> : <ModelViewport />}
+      </div>
       <LayoutTabs />
     </div>
   );

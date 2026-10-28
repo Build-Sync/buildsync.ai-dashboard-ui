@@ -58,7 +58,7 @@ export function Comments() {
       <div className="border-b border-soft p-2.5">
         <div className="relative">
           <textarea
-            aria-label="New comment"
+            aria-label="New Comment"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => (e.key === "Enter" && (e.metaKey || e.ctrlKey) ? post() : undefined)}
@@ -83,7 +83,7 @@ export function Comments() {
           <label className={cn("flex cursor-pointer items-center gap-1.5 text-[0.6875rem]", target ? "text-t2" : "text-t3")}>
             <input type="checkbox" checked={pin && !!target} disabled={!target} onChange={(e) => setPin(e.target.checked)} className="accent-[var(--accent)]" />
             <Icon name="pin" size={11} />
-            {target ? `Pin to ${target}` : "Pin to model (select an element)"}
+            {target ? `Pin to ${target}` : "Pin to Model (Select an Element)"}
           </label>
           <label className="ml-auto flex cursor-pointer items-center gap-1 text-[0.6875rem] text-t2 hover:text-t1">
             <Icon name="paperclip" size={12} />
@@ -119,12 +119,12 @@ export function Comments() {
         </span>
         <label className="flex cursor-pointer items-center gap-1.5 text-[0.6875rem] text-t2">
           <input type="checkbox" checked={onlyOpen} onChange={(e) => ws.getState().setCommentFilter(e.target.checked)} className="accent-[var(--accent)]" />
-          Unresolved only
+          Unresolved Only
         </label>
       </div>
 
       {shown.length === 0 ? (
-        <EmptyState icon="comment" title={onlyOpen ? "No unresolved comments" : "No comments yet"} hint="Pin a comment to any element so your team sees it in the 3D model." />
+        <EmptyState icon="comment" title={onlyOpen ? "No Unresolved Comments" : "No Comments Yet"} hint="Pin a comment to any element so your team sees it in the 3D model." />
       ) : (
         <ul>
           {shown.map((c) => (

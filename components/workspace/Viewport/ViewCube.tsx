@@ -88,7 +88,7 @@ export function ViewCube() {
             strokeWidth={1.2}
             className="cursor-pointer"
             onClick={() => (is2d ? ws.getState().rotatePlan() : ws.getState().rotateIso(1))}
-            {...tip("Compass ring", is2d ? "Click to rotate the plan 90°" : "Click to rotate the model 90°", "3DORBIT")}
+            {...tip("Compass Ring", is2d ? "Click to rotate the plan 90°" : "Click to rotate the model 90°", "3DORBIT")}
           />
           {compass.map((c) => {
             const q = proj([c.v[0] * (ringR + 0.55), c.v[1] * (ringR + 0.55), is2d ? 0 : -1]);
@@ -124,7 +124,7 @@ export function ViewCube() {
                     key={f.name}
                     className="group cursor-pointer"
                     onClick={() => (isTop ? ws.getState().setView("2d") : ws.getState().goToNamedView(f.view))}
-                    {...tip(isTop ? "Top / 2D plan" : `${f.label[0]}${f.label.slice(1).toLowerCase()} view`, isTop ? "Click to switch to the 2D plan" : "Click to look at this face", isTop ? "PLAN" : `-VIEW ${f.label}`)}
+                    {...tip(isTop ? "Top / 2D Plan" : `${f.label[0]}${f.label.slice(1).toLowerCase()} View`, isTop ? "Click to switch to the 2D plan" : "Click to look at this face", isTop ? "PLAN" : `-VIEW ${f.label}`)}
                   >
                     <polygon
                       points={f.pts2.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}
@@ -146,7 +146,7 @@ export function ViewCube() {
         <button
           onClick={() => ws.getState().homeView()}
           className="absolute -left-1 top-0 grid size-5 place-items-center rounded border border-line bg-chrome text-t2 hover:text-t1"
-          aria-label="Home view"
+          aria-label="Home View"
           {...tip("Home", "Reset to SW Isometric", "-VIEW HOME")}
         >
           <Icon name="roof" size={12} />
@@ -156,16 +156,16 @@ export function ViewCube() {
             <button
               onClick={() => ws.getState().rotateIso(-1)}
               className="absolute -left-1 bottom-0 grid size-5 place-items-center rounded border border-line bg-chrome text-t2 hover:text-t1"
-              aria-label="Rotate left"
-              {...tip("Rotate left", "Rotate the model 90° counter-clockwise", "3DORBIT")}
+              aria-label="Rotate Left"
+              {...tip("Rotate Left", "Rotate the model 90° counter-clockwise", "3DORBIT")}
             >
               <Icon name="chevRight" size={12} className="rotate-180" />
             </button>
             <button
               onClick={() => ws.getState().rotateIso(1)}
               className="absolute -right-1 bottom-0 grid size-5 place-items-center rounded border border-line bg-chrome text-t2 hover:text-t1"
-              aria-label="Rotate right"
-              {...tip("Rotate right", "Rotate the model 90° clockwise", "3DORBIT")}
+              aria-label="Rotate Right"
+              {...tip("Rotate Right", "Rotate the model 90° clockwise", "3DORBIT")}
             >
               <Icon name="chevRight" size={12} />
             </button>
